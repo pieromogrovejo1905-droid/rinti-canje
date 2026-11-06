@@ -6,7 +6,7 @@ Mecánica: **8 sacos (Ricocan 22 kg o Ricocat 15 kg) = 1 vale de pavo Redondos d
 | Página | Para quién | Qué hace |
 |---|---|---|
 | `index.html` | Impulsadoras y supervisor (celular) | Asistencia con selfie y GPS, pedidos y canjes (código de vale, boleta, firma, foto), incidencias y cierre de pavos |
-| `dashboard.html?k=TOKEN` | Cliente (Rinti) | Avance en vivo contra la meta, por mercado e impulsadora, asistencia, cuadre de pavos, incidencias, galería de evidencias, CSV y PDF |
+| `dashboard.html` | Cliente (Rinti), entra con usuario y contraseña | Avance en vivo contra la meta, por mercado e impulsadora, asistencia, cuadre de pavos, incidencias, galería de evidencias, CSV y PDF |
 | `apps-script/Code.gs` | Backend | Guarda todo en Google Sheets y las fotos en Google Drive |
 
 Sin `API_URL` configurada, ambas páginas funcionan en **modo demo** (la app no envía nada y el dashboard muestra datos ficticios).
@@ -51,7 +51,9 @@ Sin `API_URL` configurada, ambas páginas funcionan en **modo demo** (la app no 
    - Cliente: `https://TU-USUARIO.github.io/rinti-canje/dashboard.html?k=TOKEN`
 
 ### 4. Antes de salir a campo
-- En la pestaña **Equipo** cambia "Impulsadora 1…9" por los nombres reales y revisa el mercado de cada una. Entrega a cada una su PIN en privado.
+- En la pestaña **Equipo** cambia "Impulsadora 1…9" por los nombres reales y revisa el mercado de cada una.
+- **Accesos** (pestaña **Config**): `app_usuario` / `app_clave` es el acceso general de las promotoras (luego eligen su nombre); `cliente_usuario` / `cliente_clave` es el acceso del dashboard para Rinti. Puedes cambiar las contraseñas ahí mismo; aplica al instante.
+- El PIN de la pestaña Equipo queda como alternativa por si luego se quiere acceso individual.
 - En **Config** pon `fecha_inicio`, `fecha_fin` y `hora_ingreso`.
 - Haz una prueba completa y **borra las filas de prueba** (no las cabeceras) en Asistencia, Pedidos, Vales, Incidencias y Cierres.
 - En la capacitación, cada chica abre el link y lo agrega a la pantalla de inicio ("Agregar a inicio").
