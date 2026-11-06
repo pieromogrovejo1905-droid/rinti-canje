@@ -10,7 +10,7 @@
 const TZ = 'America/Lima';
 const KG = { ricocan: 22, ricocat: 15 };
 const P = PropertiesService.getScriptProperties();
-const VERSION_ESQUEMA = '3';
+const VERSION_ESQUEMA = '4';
 
 const MERCADOS = [
   'Fiori', 'Unicachi Norte Mayorista', 'Unicachi Norte Minorista', 'Unicachi Sur',
@@ -49,7 +49,7 @@ const ESQUEMA = {
     'tipo_comprobante', 'n_comprobante', 'sacos_ricocan', 'sacos_ricocat', 'sacos_total', 'kg_total',
     'es_canje', 'vales', 'codigos_vale', 'foto_comprobante', 'foto_entrega', 'firma', 'compra_lima',
     'consentimiento', 'cumple_mecanica', 'alertas', 'observaciones', 'validacion', 'lat', 'lng',
-    'dni', 'sacos_requeridos'],
+    'dni', 'sacos_requeridos', 'validado_por', 'validado_en'],
   Incidencias: ['id', 'registrado', 'fecha', 'hora', 'impulsadora', 'mercado', 'tipo_incidencia', 'detalle', 'foto', 'lat', 'lng'],
   Cierres: ['id', 'registrado', 'fecha', 'hora', 'supervisor', 'mercado', 'pavos_inicio', 'pavos_entregados',
     'pavos_saldo', 'vales_reportados', 'observaciones'],
@@ -160,22 +160,7 @@ function doGet(e) {
       if (!e.parameter.k || e.parameter.k !== P.getProperty('DASH_TOKEN')) {
         return out_({ ok: false, code: 'auth', error: 'Link no autorizado' });
       }
-      const pedidos = leer_('Pedidos').map(function (p) {
-        delete p.celular; delete p.consentimiento; // el cliente (Rinti) no ve datos de contacto
-        p.dni = p.dni ? '•••••' + String(p.dni).slice(-3) : ''; // DNI enmascarado
-        return p;
-      });
-      return out_({
-        ok: true,
-        generado: ahora_(),
-        config: configPublica_(),
-        sacos_por_mercado: SACOS_POR_MERCADO,
-        equipo: equipoPublico_(),
-        asistencia: leer_('Asistencia'),
-        pedidos: pedidos,
-        incidencias: leer_('Incidencias'),
-        cierres: leer_('Cierres'),
-      });
+      return out_(datos_(false));
     }
     return out_({ ok: true, servicio: 'Canje Rinti' });
   } catch (err) {
@@ -202,6 +187,11 @@ function doPost(e) {
     if (b.tipo === 'verificar_dni') return out_(verificarDni_(b, u));
     if (b.tipo === 'verificar_vale') return out_(verificarVale_(b, u));
     if (b.tipo === 'panel') return out_(panel_(u));
+    if (b.tipo === 'datos_interno') {
+      if (!esJefe_(u)) return out_({ ok: false, code: 'auth', error: 'El dashboard interno es solo para supervisores y coordinador' });
+      return out_(Object.assign(datos_(true), { usuario: u }));
+    }
+    if (b.tipo === 'validar') return out_(validar_(b, u));
     const fn = { asistencia: asistencia_, pedido: pedido_, incidencia: incidencia_, cierre: cierre_ }[b.tipo];
     if (!fn) return out_({ ok: false, code: 'val', error: 'Tipo de registro desconocido' });
     if (!b.id) return out_({ ok: false, code: 'val', error: 'Falta el id del registro' });
@@ -214,6 +204,54 @@ function doPost(e) {
 /* ------------------------------------------------------------------ */
 /* Registros                                                           */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Datos para los dashboards.
+ * Cliente (Rinti): sin incidencias, observaciones, alertas, contacto ni DNI completo.
+ * Interno (Free): todo.
+ */
+function datos_(interno) {
+  const pedidos = leer_('Pedidos').map(function (p) {
+    if (interno) return p;
+    ['celular', 'consentimiento', 'observaciones', 'alertas', 'validado_por', 'validado_en', 'lat', 'lng']
+      .forEach(function (k) { delete p[k]; });
+    p.dni = p.dni ? '•••••' + String(p.dni).slice(-3) : ''; // DNI enmascarado
+    return p;
+  });
+  const cierres = leer_('Cierres').map(function (c) { if (!interno) delete c.observaciones; return c; });
+  return {
+    ok: true, modo: interno ? 'interno' : 'cliente', generado: ahora_(),
+    config: configPublica_(), sacos_por_mercado: SACOS_POR_MERCADO,
+    equipo: equipoPublico_(), asistencia: leer_('Asistencia'), pedidos: pedidos,
+    incidencias: interno ? leer_('Incidencias') : [], cierres: cierres,
+  };
+}
+
+/** Validación de un canje desde el dashboard interno (Válido, Observado o volver a Pendiente). */
+function validar_(b, u) {
+  if (!esJefe_(u)) throw val_('Solo supervisores y coordinador pueden validar');
+  const valor = limpio_(b.validacion);
+  if (['Válido', 'Observado', 'Pendiente'].indexOf(valor) < 0) throw val_('Validación inválida');
+  const nota = limpio_(b.nota);
+  if (valor === 'Observado' && !nota) throw val_('Escribe el motivo de la observación');
+  return conLock_(function () {
+    const sh = hoja_('Pedidos'), cols = ESQUEMA.Pedidos;
+    if (sh.getLastRow() < 2) throw val_('No se encontró el canje');
+    const ids = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getDisplayValues();
+    let fila = -1;
+    for (let i = 0; i < ids.length; i++) if (ids[i][0] === String(b.id)) { fila = i + 2; break; }
+    if (fila < 0) throw val_('No se encontró el canje');
+    const col = function (k) { return cols.indexOf(k) + 1; };
+    sh.getRange(fila, col('validacion')).setValue(valor);
+    sh.getRange(fila, col('validado_por')).setValue(valor === 'Pendiente' ? '' : u.nombre);
+    sh.getRange(fila, col('validado_en')).setValue(valor === 'Pendiente' ? '' : ahora_());
+    if (nota) {
+      const obs = sh.getRange(fila, col('observaciones')).getDisplayValues()[0][0];
+      sh.getRange(fila, col('observaciones')).setValue((obs ? obs + ' | ' : '') + 'Validación (' + u.nombre + '): ' + nota);
+    }
+    return { ok: true, validacion: valor, validado_por: valor === 'Pendiente' ? '' : u.nombre };
+  });
+}
 
 /** Supervisores y coordinador: eligen mercado, hacen el cierre y ven el panel del equipo. */
 function esJefe_(u) { return /^(supervisor|coordinador)/.test(String(u && u.rol || '').toLowerCase()); }

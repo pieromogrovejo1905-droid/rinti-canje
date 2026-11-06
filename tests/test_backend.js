@@ -58,6 +58,7 @@ const Logger = { log: s => logs.push(s) };
 eval(src);
 
 // ---- pruebas ----
+var sh;
 const res = []; const ok = (name, cond, extra) => res.push((cond ? 'PASS ' : 'FAIL ') + name + (extra ? ' -> ' + extra : ''));
 const post = b => JSON.parse(doPost({ postData: { contents: JSON.stringify(b) } }).s);
 const get = p => JSON.parse(doGet({ parameter: p }).s);
@@ -113,7 +114,7 @@ ok('dashboard: sacos requeridos guardados', p2.sacos_requeridos === '17' && p2.e
 ok('dashboard: reglas en la respuesta', d.sacos_por_mercado['Mercado Productores'] === 25);
 ok('dashboard: sin token no hay datos', get({ action: 'data', k: 'x' }).code === 'auth');
 // ---- coordinador, panel y regla del vale ----
-const sh = n => sheets[n].rows.slice(1).map(r => Object.fromEntries(sheets[n].rows[0].map((h, i) => [h, r[i]])));
+sh = n => sheets[n].rows.slice(1).map(r => Object.fromEntries(sheets[n].rows[0].map((h, i) => [h, r[i]])));
 const eq2 = sh('Equipo'); const K = u => ({ usuario: u, clave: eq2.find(e => e.usuario === u).contrasena });
 r = post({ ...K('coordinador'), tipo: 'login' });
 ok('login coordinador', r.ok && r.usuario.rol === 'coordinador', JSON.stringify(r));
@@ -133,6 +134,21 @@ ok('talonario: vale de otro mercado', /es del mercado Parada/.test(post({ ...K('
 r = post(canje({ ...K('fiori'), id: 'v2', ricocan: 17, n_comprobante: 'BV2', codigos: ['rt-0001'], dni: '55556666' }));
 ok('talonario: vale correcto se canjea', r.ok && r.vales === 1 && sheets.Vales.rows.some(v => v[0] === 'RT0001'), JSON.stringify(r));
 ok('talonario: vale sin mercado sirve en cualquiera', post({ ...K('parada'), tipo: 'verificar_vale', codigo: 'RT0002' }).valido === true);
+// ---- dashboards cliente / interno y validación ----
+post({ ...F, tipo: 'incidencia', id: 'i1', tipo_incidencia: 'Otro', detalle: 'algo pasó' });
+const dc = get({ action: 'data', k: props.DASH_TOKEN });
+ok('cliente: sin incidencias ni observaciones', dc.modo === 'cliente' && dc.incidencias.length === 0 && !dc.pedidos.some(p => 'observaciones' in p || 'alertas' in p || 'celular' in p));
+const di = post({ ...S, tipo: 'datos_interno' });
+ok('interno: con incidencias, observaciones y DNI completo', di.ok && di.modo === 'interno' && di.incidencias.length === 1 && di.pedidos.some(p => p.dni === '12345678') && 'observaciones' in di.pedidos[0], JSON.stringify(di).slice(0, 120));
+ok('interno: impulsadora no entra', post({ ...F, tipo: 'datos_interno' }).code === 'auth');
+ok('validar: impulsadora no puede', post({ ...F, tipo: 'validar', id: 'p2', validacion: 'Válido' }).code === 'val');
+ok('validar: observado pide motivo', /motivo/.test(post({ ...S, tipo: 'validar', id: 'p2', validacion: 'Observado' }).error));
+r = post({ ...S, tipo: 'validar', id: 'p2', validacion: 'Válido' });
+const p2v = sh('Pedidos').find(p => p.id === 'p2');
+ok('validar: queda Válido con quién y cuándo', r.ok && p2v.validacion === 'Válido' && p2v.validado_por === sup.nombre && p2v.validado_en, JSON.stringify(p2v).slice(0, 80));
+post({ ...S, tipo: 'validar', id: 'p5', validacion: 'Observado', nota: 'foto borrosa' });
+ok('validar: observado guarda la nota', /foto borrosa/.test(sh('Pedidos').find(p => p.id === 'p5').observaciones));
+ok('validar: id inexistente', /No se encontró/.test(post({ ...S, tipo: 'validar', id: 'zz', validacion: 'Válido' }).error));
 // Migración: hoja antigua con 5 columnas en Equipo
 const viejo = sheets.Equipo.rows; viejo.forEach(x => x.length = 5); viejo[0] = ['nombre', 'pin', 'rol', 'mercado', 'activo'];
 props.ESQUEMA = '1'; get({ action: 'config' });

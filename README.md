@@ -1,5 +1,6 @@
 > ## 👉 Abrir el dashboard: **[pieromogrovejo1905-droid.github.io/rinti-canje/dashboard.html](https://pieromogrovejo1905-droid.github.io/rinti-canje/dashboard.html)**
 > App de impulsadoras: **[pieromogrovejo1905-droid.github.io/rinti-canje](https://pieromogrovejo1905-droid.github.io/rinti-canje/)**
+> Dashboard interno Free: **[pieromogrovejo1905-droid.github.io/rinti-canje/interno.html](https://pieromogrovejo1905-droid.github.io/rinti-canje/interno.html)** (usuarios de supervisor o coordinador)
 >
 > Esta página es solo el código. El dashboard se abre en el link de arriba, con usuario y contraseña.
 
@@ -72,13 +73,16 @@ Sin `API_URL` configurada, ambas páginas funcionan en **modo demo** (la app no 
 - **Supervisores y coordinador** (`supervisor`, `supervisor2`, `coordinador`): eligen mercado, hacen el cierre de pavos y tienen el **Panel del equipo** (quién llegó, quién llegó tarde, quién no marcó entrada, canjes de cada una contra la cuota de 6, último registro, incidencias). Pon el celular de cada impulsadora en la columna `celular` de **Equipo** para que el panel muestre los botones de llamar y WhatsApp.
 - **Regla del vale**: el código solo acepta letras y números y cada vale se usa una vez. Si cargas los códigos impresos en la pestaña **Talonario** (columna `codigo`, y `mercado` si cada mercado tiene su talonario), solo se aceptan esos códigos.
 - **Acceso del cliente**: pestaña **Config**, filas `cliente_usuario` y `cliente_clave`.
+- **Dos dashboards**:
+  - **Cliente** (`dashboard.html`): avance, canjes, sacos, asistencia (cada impulsadora solo como Activa / Inactiva), cuadre de pavos y evidencias. No muestra incidencias, observaciones, tardanzas, celulares ni el DNI completo.
+  - **Interno Free** (`interno.html`): todo lo anterior más incidencias, observaciones, horas de entrada y salida, DNI completo y la **validación de cada canje** (Válido / Observado con motivo) desde la foto del vale. Se entra con el usuario de supervisor o coordinador.
 - Las contraseñas se pueden cambiar escribiendo en la hoja; aplica al instante.
 - En **Config** pon `fecha_inicio`, `fecha_fin` y `hora_ingreso`.
 - Haz una prueba completa y **borra las filas de prueba** (no las cabeceras) en Asistencia, Pedidos, Vales, Incidencias y Cierres.
 - En la capacitación, cada chica abre el link y lo agrega a la pantalla de inicio ("Agregar a inicio").
 
 ## Operación diaria
-- **Supervisor (agencia):** en la pestaña Pedidos cambia la columna `validacion` a **Válido** u **Observado** después de revisar las fotos. Lo observado baja el % de cumplimiento en el dashboard.
+- **Validación (supervisor o coordinador):** en el dashboard interno abre la foto de cada canje y marca **Válido** u **Observado** (con motivo). Queda guardado quién y cuándo. Todo canje entra como Pendiente; el cliente lo ve como "En revisión por Free" hasta que se valida. Lo observado baja el % de cumplimiento.
 - **Sin señal:** la app guarda los registros en el teléfono y los envía sola al volver la señal. No se duplican.
 - **Vale repetido:** el sistema rechaza un código de vale ya usado.
 - **Link del cliente filtrado:** ejecuta `renovarTokenDashboard()` en Apps Script y envía el link nuevo.
