@@ -152,11 +152,13 @@
       <label class="f" for="lUsuario">Usuario</label>
       <input id="lUsuario" type="text" autocapitalize="none" autocorrect="off" autocomplete="username" spellcheck="false">
       <label class="f" for="lClave">Contraseña</label>
-      <input id="lClave" type="password" autocomplete="current-password">
+      <input id="lClave" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false">
+      <label style="display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-size:14px"><input type="checkbox" id="lVer" style="width:auto;margin:0"> Ver contraseña</label>
       <div id="lErr" class="err-box" hidden></div>
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
+    <p class="muted" style="font-size:12px;opacity:.7">Versión 4</p>
   </section>
 
   <!-- HOME -->
@@ -539,6 +541,7 @@ async function cargarEquipo() {
   } catch { /* sin señal: usa lo guardado */ }
 }
 const sinTildes = s => String(s).toLowerCase().normalize('NFD').replace(/[^a-z]/g, '');
+$('#lVer').onchange = e => { $('#lClave').type = e.target.checked ? 'text' : 'password'; };
 $('#btnLogin').onclick = async () => {
   const usuario = $('#lUsuario').value.trim().toLowerCase(), clave = $('#lClave').value.trim();
   const err = m => { $('#lErr').textContent = m; $('#lErr').hidden = !m; };
@@ -558,7 +561,10 @@ $('#btnLogin').onclick = async () => {
     }
     S.user = user; S.cred = { usuario, clave }; store.set('user', user); store.set('cred', S.cred);
     $('#lClave').value = ''; entrar();
-  } catch { err('Sin conexión. Necesitas señal para ingresar la primera vez.'); }
+  } catch (e) {
+    const det = e && e.name === 'AbortError' ? 'la señal está muy lenta' : String((e && e.message) || e).slice(0, 80);
+    err('No se pudo conectar (' + det + '). Revisa la señal o los datos y vuelve a intentar. Si sigue, abre el link en Chrome o Safari.');
+  }
   finally { overlay(false); }
 };
 $('#btnSalir').onclick = async () => {
