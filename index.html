@@ -117,6 +117,23 @@
   .codes input{text-transform:uppercase;letter-spacing:.06em;font-weight:700}
   .codes input::placeholder{text-transform:none;letter-spacing:0;font-weight:400}
   .gps{font-size:13px;color:var(--muted);margin-top:10px}
+  .foto-n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:800;margin-right:6px;vertical-align:1px}
+  /* Panel del equipo */
+  .pn-res{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+  .pn-res div{background:var(--accent-soft);border-radius:12px;padding:10px 4px;font-size:12.5px;color:var(--ink2);line-height:1.2}
+  .pn-res b{display:block;font-size:22px;color:var(--ink)}
+  .pn-res .bad{background:var(--err-soft)} .pn-res .bad b{color:var(--err)}
+  .pn-res .mid{background:var(--warn-soft)} .pn-res .mid b{color:var(--warn)}
+  .pn{padding:14px}
+  .pn.alerta{border-color:#f0b8b2;box-shadow:inset 4px 0 0 var(--err)}
+  .pn.aviso{box-shadow:inset 4px 0 0 #e0a43a}
+  .pn-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .pn-h b{display:block;font-size:16px} .pn-h small{color:var(--muted);font-size:13px}
+  .pn-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .pn .stats{gap:14px;flex-wrap:wrap}
+  .pn-acc{display:flex;gap:8px;margin-top:10px}
+  .pn-acc a{flex:1;text-align:center;text-decoration:none;font-weight:600;font-size:14px;padding:9px 6px;border-radius:10px;border:1px solid var(--line);color:var(--accent);background:#fff}
+  .pn-inc{margin-top:8px;font-size:13.5px;color:var(--warn);background:var(--warn-soft);border-radius:10px;padding:8px 10px}
   .err-box{background:var(--err-soft);color:var(--err);padding:12px;border-radius:10px;font-size:15px;margin-top:12px}
   .cola-item{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;margin-bottom:8px;font-size:14px}
   .cola-item .e{color:var(--err);margin-top:4px}
@@ -158,7 +175,7 @@
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
-    <p class="muted" style="font-size:12px;opacity:.7">Versión 4</p>
+    <p class="muted" style="font-size:12px;opacity:.7">Versión 5</p>
   </section>
 
   <!-- HOME -->
@@ -176,10 +193,11 @@
       <div class="progress"><i id="hBar" style="width:0"></i></div>
       <div class="stats"><span>Pedidos <b id="hPedidos">0</b></span><span>Vales <b id="hVales">0</b></span><span>Sacos <b id="hSacos">0</b></span></div>
     </div>
+    <button class="btn" id="goPanel" hidden><span class="ic">👥</span>Panel del equipo</button>
     <button class="btn" id="goAsis"><span class="ic">🕘</span><span id="goAsisTxt">Marcar entrada</span></button>
     <button class="btn" id="goPedido"><span class="ic">🧾</span>Registrar pedido / canje</button>
     <button class="btn sec" id="goInc"><span class="ic">⚠️</span>Reportar incidencia</button>
-    <button class="btn sec" id="goCierre" hidden><span class="ic">📦</span>Cierre del día (supervisor)</button>
+    <button class="btn sec" id="goCierre" hidden><span class="ic">📦</span>Cierre del día (pavos)</button>
     <button class="btn sec" id="goCola" hidden><span class="ic">📤</span><span id="goColaTxt">Pendientes por enviar</span></button>
   </section>
 
@@ -234,25 +252,26 @@
     </div>
 
     <div class="card">
-      <h3 style="margin-top:0">3 · Boleta y código del vale</h3>
-      <label class="f" for="pTipoComp">Comprobante</label>
+      <h3 style="margin-top:0">3 · Boleta o factura</h3>
+      <label class="f" for="pTipoComp" style="margin-top:0">Comprobante</label>
       <div class="row">
         <select id="pTipoComp" style="flex:0 0 40%"><option>Boleta</option><option>Factura</option></select>
         <input id="pNComp" type="text" placeholder="Serie y número" autocapitalize="characters">
       </div>
-      <div class="vale-box">
-        <label class="f">🎟️ Código del vale <span id="pValesN"></span></label>
-        <div class="codes" id="pCodes"></div>
-        <div class="muted" id="pValeHint"></div>
-      </div>
-      <label class="f">Foto de la boleta o factura <span class="opt" id="pCompOpt">(opcional)</span></label>
-      <label class="foto" data-key="foto_comprobante"><input type="file" accept="image/*" capture="environment"><span class="ph">🧾</span><span class="t">Tomar foto<small>Que se lean los sacos y el total</small></span></label>
+      <label class="f"><span class="foto-n">1</span>Foto de la boleta o factura <span class="opt" id="pCompOpt">(opcional)</span></label>
+      <label class="foto" data-key="foto_comprobante"><input type="file" accept="image/*" capture="environment"><span class="ph">🧾</span><span class="t">Tomar foto de la boleta<small>Que se lean los sacos, la fecha y el total</small></span></label>
     </div>
 
     <div class="card" id="pCanje" hidden>
-      <h3 style="margin-top:0">4 · Entrega del vale</h3>
-      <label class="f" style="margin-top:0">Foto del cliente recibiendo el vale</label>
-      <label class="foto" data-key="foto_entrega"><input type="file" accept="image/*" capture="environment"><span class="ph">🎟️</span><span class="t">Tomar foto<small>Cliente con el vale en la mano</small></span></label>
+      <h3 style="margin-top:0">4 · Vale y entrega</h3>
+      <div class="vale-box" style="margin-top:0">
+        <label class="f" for="pCodigo">🎟️ Código del vale (obligatorio)</label>
+        <div class="codes"><input id="pCodigo" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="24" placeholder="Código impreso en el vale"></div>
+        <div class="dni-estado" id="pValeEstado" hidden></div>
+        <div class="muted">Solo letras y números, tal como está impreso. Cada vale se registra una sola vez.</div>
+      </div>
+      <label class="f"><span class="foto-n">2</span>Foto del cliente con el vale</label>
+      <label class="foto" data-key="foto_entrega"><input type="file" accept="image/*" capture="environment"><span class="ph">🎟️</span><span class="t">Tomar foto del cliente<small>El cliente con el vale en la mano</small></span></label>
       <label class="f">Firma del cliente</label>
       <div class="firma-wrap"><canvas id="pFirma"></canvas><div class="linea"></div><div class="hint" id="pFirmaHint">Firme aquí con el dedo</div></div>
       <div class="firma-tools"><button type="button" id="pFirmaClr">Borrar firma</button></div>
@@ -306,6 +325,19 @@
     </div>
   </section>
 
+  <!-- PANEL DEL EQUIPO (supervisores y coordinador) -->
+  <section id="vPanel" class="view" hidden>
+    <button class="back" data-back>‹ Volver</button>
+    <h2>Equipo hoy</h2>
+    <div class="card"><div class="pn-res" id="pnRes"></div>
+      <div class="muted" style="margin-top:10px" id="pnCanjesTxt"></div>
+      <div class="progress"><i id="pnBar" style="width:0"></i></div>
+      <div class="muted" id="pnAct"></div>
+    </div>
+    <div id="pnLista"></div>
+    <button class="btn sec" id="pnRefrescar">Actualizar</button>
+  </section>
+
   <!-- COLA -->
   <section id="vCola" class="view" hidden>
     <button class="back" data-back>‹ Volver</button>
@@ -355,9 +387,12 @@ function contador(delta) {
   if (delta) { for (const k in delta) c[k] = Math.max(0, (c[k] || 0) + delta[k]); store.set(cntKey(), c); }
   return c;
 }
-// La impulsadora trabaja siempre en el mercado de su usuario; el supervisor elige.
+// Supervisores y coordinador eligen mercado, hacen el cierre y ven el panel del equipo.
+const esJefe = () => !!S.user && /^(supervisor|coordinador)/.test(String(S.user.rol || '').toLowerCase());
+const rolTxt = () => /^coordinador/.test(S.user.rol) ? 'Coordinador de Trade' : 'Supervisor';
+// La impulsadora trabaja siempre en el mercado de su usuario.
 function mercadoHoy() {
-  if (S.user && S.user.rol !== 'supervisor' && S.user.mercado) return S.user.mercado;
+  if (S.user && !esJefe() && S.user.mercado) return S.user.mercado;
   return store.get(mercKey(), (S.user && S.user.mercado) || C.MERCADOS[0]);
 }
 const REGLAS = Object.assign({}, C.SACOS_POR_MERCADO, store.get('reglas', {}));
@@ -552,7 +587,7 @@ $('#btnLogin').onclick = async () => {
     let user;
     if (DEMO) {
       const u = sinTildes(usuario).replace(/^unicachi/, '');
-      user = usuario === 'supervisor' ? { nombre: 'Supervisor (práctica)', rol: 'supervisor', mercado: '' }
+      user = /^(supervisor|coordinador)/.test(usuario) ? { nombre: usuario === 'coordinador' ? 'Coordinador (práctica)' : 'Supervisor (práctica)', rol: usuario === 'coordinador' ? 'coordinador' : 'supervisor', mercado: '' }
         : { nombre: 'Impulsadora (práctica)', rol: 'impulsadora', mercado: C.MERCADOS.find(m => u && sinTildes(m).includes(u)) || C.MERCADOS[0] };
     } else {
       const r = await enviar({ tipo: 'login', usuario, clave });
@@ -575,10 +610,11 @@ $('#btnSalir').onclick = async () => {
 
 /* ---------- home ---------- */
 function entrar() {
-  $('#hdrSub').textContent = S.user.rol === 'supervisor' ? S.user.nombre + ' · Supervisor' : S.user.nombre + ' · ' + S.user.mercado;
-  opts($('#hMercado'), S.user.rol === 'supervisor' ? C.MERCADOS : [mercadoHoy()], mercadoHoy());
-  $('#hMercado').disabled = S.user.rol !== 'supervisor';
-  $('#goCierre').hidden = S.user.rol !== 'supervisor';
+  $('#hdrSub').textContent = esJefe() ? S.user.nombre + ' · ' + rolTxt() : S.user.nombre + ' · ' + S.user.mercado;
+  opts($('#hMercado'), esJefe() ? C.MERCADOS : [mercadoHoy()], mercadoHoy());
+  $('#hMercado').disabled = !esJefe();
+  $('#goCierre').hidden = !esJefe();
+  $('#goPanel').hidden = !esJefe();
   show('vHome'); pintarHome(); refrescarCola(); procesarCola();
 }
 $('#hMercado').onchange = e => { store.set(mercKey(), e.target.value); pintarHome(); };
@@ -643,6 +679,26 @@ $('#pDni').addEventListener('input', e => {
     } catch { if ($('#pDni').value === d) estadoDni('info', 'Sin señal: no se pudo verificar. Se revisará al enviar.'); }
   }, 450);
 });
+const normCodigo = s => String(s || '').toUpperCase().normalize('NFD').replace(/[^A-Z0-9]/g, '');
+let valeT, valeMalo = '';
+function estadoVale(cls, txt) { const el = $('#pValeEstado'); el.className = 'dni-estado ' + cls; el.textContent = txt; el.hidden = !txt; }
+$('#pCodigo').addEventListener('input', e => {
+  const c = normCodigo(e.target.value); if (e.target.value !== c) e.target.value = c;
+  valeMalo = ''; clearTimeout(valeT);
+  if (!c) return estadoVale('', '');
+  if (c.length < 3) return estadoVale('info', 'Escribe el código completo');
+  if (DEMO) return estadoVale('ok', '✔ Código válido');
+  estadoVale('info', 'Verificando código…');
+  valeT = setTimeout(async () => {
+    try {
+      const r = await enviar({ tipo: 'verificar_vale', codigo: c, mercado: mercadoHoy(), nombre: S.user.nombre, usuario: S.cred.usuario, clave: S.cred.clave });
+      if ($('#pCodigo').value !== c) return;
+      if (r.ok && r.valido === false) { valeMalo = r.mensaje; estadoVale('err', '✕ ' + r.mensaje); }
+      else if (r.ok) estadoVale('ok', '✔ ' + r.mensaje);
+      else estadoVale('info', r.error || 'No se pudo verificar');
+    } catch { if ($('#pCodigo').value === c) estadoVale('info', 'Sin señal: no se pudo verificar. Se revisará al enviar.'); }
+  }, 450);
+});
 let valesPrev = -1;
 function calcPedido() {
   const rc = n('pRc'), rt = n('pRt'), tot = rc + rt, req = sacosReq(), vales = req && tot >= req ? 1 : 0, kg = rc * C.KG.ricocan + rt * C.KG.ricocat;
@@ -656,12 +712,6 @@ function calcPedido() {
   $('#pCanje').hidden = !vales;
   $('#pCompOpt').textContent = vales ? '(obligatoria)' : '(opcional)';
   if (vales !== valesPrev) {
-    const prev = $$('#pCodes input:not(:disabled)').map(i => i.value);
-    $('#pCodes').innerHTML = vales
-      ? `<input type="text" autocapitalize="characters" autocomplete="off" placeholder="Código impreso en el vale" value="${esc(prev[0] || '')}">`
-      : `<input type="text" disabled placeholder="Se activa con ${sacosReq()} sacos">`;
-    $('#pValesN').textContent = vales ? '(obligatorio)' : '';
-    $('#pValeHint').textContent = vales ? 'Escribe el código tal como está impreso en el vale que entregas.' : `Cada vale tiene un código. Se registra cuando el cliente compra ${sacosReq()} sacos o más.`;
     if (vales && valesPrev <= 0) requestAnimationFrame(firma.ajustar);
     valesPrev = vales;
   }
@@ -672,8 +722,8 @@ function onMercadoPedido() {
 }
 $('#goPedido').onclick = () => {
   const v = $('#vPedido');
-  ['pPuesto', 'pCliente', 'pDni', 'pCelular', 'pNComp', 'pObs'].forEach(id => $('#' + id).value = '');
-  estadoDni('', ''); dniUsado = false;
+  ['pPuesto', 'pCliente', 'pDni', 'pCelular', 'pNComp', 'pObs', 'pCodigo'].forEach(id => $('#' + id).value = '');
+  estadoDni('', ''); dniUsado = false; estadoVale('', ''); valeMalo = '';
   $('#pRc').value = 0; $('#pRt').value = 0; $('#pCons').checked = false; $('#pLima').checked = false; $('#pConsWrap').hidden = true;
   $('#pPuestoSel').innerHTML = '<option value="">Elige el puesto</option>' + C.PUESTOS_PRODUCTORES.map(p => `<option>${esc(p)}</option>`).join('');
   resetFotos(v); showErr(v, ''); valesPrev = -1; onMercadoPedido(); calcPedido(); show('vPedido');
@@ -684,7 +734,7 @@ $('#pEnviar').onclick = async () => {
   const prod = /productores/i.test(mercadoHoy());
   const dni = normDni($('#pDni').value);
   const puesto = prod ? $('#pPuestoSel').value : $('#pPuesto').value.trim();
-  const codigos = $$('#pCodes input:not(:disabled)').map(i => i.value.trim().toUpperCase().replace(/\s+/g, ''));
+  const codigos = [normCodigo($('#pCodigo').value)];
   const cel = $('#pCelular').value.trim();
   const e = m => showErr(v, m);
   if (prod && !puesto) return e('Elige el puesto de Mercado Productores');
@@ -697,9 +747,11 @@ $('#pEnviar').onclick = async () => {
     if (!dni) return e('Falta el DNI del cliente');
     if (dniUsado) return e('Este DNI ya recibió un vale hoy. Máximo 1 vale por DNI al día.');
     if (!$('#pNComp').value.trim()) return e('Falta el número de boleta o factura');
-    if (codigos.some(c => !c)) return e('Falta el código del vale');
-    if (!foto('vPedido', 'foto_comprobante')) return e('Falta la foto de la boleta o factura');
-    if (!foto('vPedido', 'foto_entrega')) return e('Falta la foto del cliente recibiendo el vale');
+    if (!foto('vPedido', 'foto_comprobante')) return e('Falta la foto 1: la boleta o factura');
+    if (!codigos[0]) return e('Falta el código del vale');
+    if (codigos[0].length < 3) return e('El código del vale está incompleto');
+    if (valeMalo) return e(valeMalo);
+    if (!foto('vPedido', 'foto_entrega')) return e('Falta la foto 2: el cliente con el vale');
     if (firma.vacia()) return e('Falta la firma del cliente');
     if (!$('#pLima').checked) return e('Confirma que la compra es en Lima');
   }
@@ -753,6 +805,70 @@ $('#cEnviar').onclick = async () => {
 };
 
 $('#goCola').onclick = () => { refrescarCola(); show('vCola'); };
+
+/* ---------- panel del equipo (supervisores y coordinador) ---------- */
+const aMin = h => { const p = String(h || '').split(':'); return p.length > 1 ? +p[0] * 60 + +p[1] : NaN; };
+let panelT;
+function panelDemo() {
+  const ahora = horaLima(), m = aMin(ahora);
+  const filas = C.MERCADOS.map((mer, i) => {
+    const llego = i !== 6, tarde = i === 2;
+    const ent = llego ? (tarde ? '09:27' : '08:5' + (i % 10)) : '';
+    const canjes = llego ? Math.max(0, Math.min(6, Math.floor((m - 540) / 75) - (i % 3))) : 0;
+    return { nombre: 'Impulsadora ' + (i + 1), mercado: mer, celular: i % 2 ? '' : '987654321', entrada: m >= 530 ? ent : '', tarde: tarde && m >= 567,
+      salida: '', canjes, pedidos: llego ? canjes + 2 : 0, sacos: llego ? canjes * (REGLAS[mer] || 5) + 3 : 0, ultima: llego && m >= 530 ? (i === 4 ? '10:05' : ahora) : '', foto_entrada: '',
+      incidencias: i === 5 ? [{ hora: '11:20', tipo: 'Quiebre de stock Ricocan / Ricocat', detalle: 'Distribuidor sin Ricocan 22 kg' }] : [], requeridos: REGLAS[mer] };
+  });
+  return { ok: true, fecha: hoy(), hora: ahora, meta: S.meta, hora_ingreso: '09:00', limite: '09:10', filas };
+}
+async function cargarPanel() {
+  $('#pnAct').textContent = 'Actualizando…';
+  try {
+    const r = DEMO ? panelDemo() : await enviar({ tipo: 'panel', nombre: S.user.nombre, usuario: S.cred.usuario, clave: S.cred.clave });
+    if (!r.ok) { $('#pnAct').textContent = r.error || 'No se pudo cargar'; return; }
+    pintarPanel(r);
+  } catch { $('#pnAct').textContent = 'Sin señal. Toca Actualizar para reintentar.'; }
+}
+function pintarPanel(r) {
+  const ahora = aMin(r.hora), pasoIngreso = ahora > aMin(r.limite);
+  const filas = r.filas.map(f => {
+    const quieto = f.entrada && !f.salida && f.ultima && ahora - aMin(f.ultima) >= 90;
+    // ritmo esperado: la meta repartida en 8 horas desde el ingreso
+    const esperado = Math.min(r.meta, Math.max(0, Math.floor((ahora - aMin(r.hora_ingreso)) / 480 * r.meta)));
+    const atrasada = f.entrada && f.canjes < esperado - 1;
+    const nivel = (!f.entrada && pasoIngreso) ? 2 : (f.tarde || quieto || atrasada || f.incidencias.length) ? 1 : 0;
+    return Object.assign({}, f, { quieto, esperado, atrasada, nivel });
+  }).sort((a, b) => b.nivel - a.nivel || a.canjes - b.canjes);
+  const llegaron = filas.filter(f => f.entrada).length, tarde = filas.filter(f => f.tarde).length;
+  const faltan = filas.filter(f => !f.entrada).length, canjes = filas.reduce((s, f) => s + f.canjes, 0), metaT = r.meta * filas.length;
+  $('#pnRes').innerHTML = `<div><b>${llegaron}/${filas.length}</b>llegaron</div><div class="${tarde ? 'mid' : ''}"><b>${tarde}</b>tarde</div><div class="${faltan && pasoIngreso ? 'bad' : ''}"><b>${faltan}</b>sin entrada</div>`;
+  $('#pnCanjesTxt').innerHTML = `Canjes del equipo: <b style="color:var(--ink)">${canjes} / ${metaT}</b> · ingreso ${esc(r.hora_ingreso)} (tarde desde ${esc(r.limite)})`;
+  $('#pnBar').style.width = Math.min(100, metaT ? canjes / metaT * 100 : 0) + '%';
+  $('#pnAct').textContent = `Actualizado a las ${r.hora} · se actualiza solo cada 2 minutos`;
+  $('#pnLista').innerHTML = filas.map(f => {
+    const pills = [];
+    if (!f.entrada) pills.push(pasoIngreso ? '<span class="pill err">✕ Sin entrada</span>' : '<span class="pill">Aún no marca entrada</span>');
+    else pills.push(f.tarde ? `<span class="pill warn">⏰ Llegó tarde ${esc(f.entrada)}</span>` : `<span class="pill ok">✔ Llegó ${esc(f.entrada)}</span>`);
+    if (f.salida) pills.push(`<span class="pill">Salió ${esc(f.salida)}</span>`);
+    if (f.quieto) pills.push(`<span class="pill warn">Sin registros desde ${esc(f.ultima)}</span>`);
+    if (f.atrasada) pills.push(`<span class="pill warn">Debajo del ritmo (lleva ${f.canjes}, debería ir ~${f.esperado})</span>`);
+    const cel = String(f.celular || '').replace(/\D/g, '');
+    const acc = [cel ? `<a href="tel:${cel}">📞 Llamar</a><a href="https://wa.me/${cel.length === 9 ? '51' + cel : cel}" target="_blank" rel="noopener">💬 WhatsApp</a>` : '',
+      f.foto_entrada ? `<a href="${esc(f.foto_entrada)}" target="_blank" rel="noopener">🤳 Selfie</a>` : ''].join('');
+    return `<div class="card pn ${f.nivel === 2 ? 'alerta' : f.nivel ? 'aviso' : ''}">
+      <div class="pn-h"><div><b>${esc(f.mercado)}</b><small>${esc(f.nombre)} · ${f.requeridos || '–'} sacos = 1 vale</small></div>
+        <div style="text-align:right;font-weight:800;font-size:22px;line-height:1">${f.canjes}<small style="display:block;font-size:12px;font-weight:600">/ ${r.meta} canjes</small></div></div>
+      <div class="progress"><i style="width:${Math.min(100, f.canjes / r.meta * 100)}%"></i></div>
+      <div class="stats"><span>Pedidos <b>${f.pedidos}</b></span><span>Sacos <b>${f.sacos}</b></span><span>Último registro <b>${esc(f.ultima || '—')}</b></span></div>
+      <div class="pn-pills">${pills.join('')}</div>
+      ${f.incidencias.map(i => `<div class="pn-inc">⚠️ ${esc(i.hora)} · ${esc(i.tipo)}${i.detalle ? ': ' + esc(i.detalle) : ''}</div>`).join('')}
+      ${acc ? `<div class="pn-acc">${acc}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+$('#goPanel').onclick = () => { $('#pnLista').innerHTML = ''; show('vPanel'); cargarPanel(); clearInterval(panelT);
+  panelT = setInterval(() => { if (!$('#vPanel').hidden && document.visibilityState === 'visible') cargarPanel(); else if ($('#vPanel').hidden) clearInterval(panelT); }, 120000); };
+$('#pnRefrescar').onclick = cargarPanel;
 
 /* ---------- inicio ---------- */
 if (DEMO) { const b = $('#banner'); b.hidden = false; b.textContent = 'Modo práctica: no se guarda nada.'; }

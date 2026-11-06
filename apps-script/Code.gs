@@ -10,7 +10,7 @@
 const TZ = 'America/Lima';
 const KG = { ricocan: 22, ricocat: 15 };
 const P = PropertiesService.getScriptProperties();
-const VERSION_ESQUEMA = '2';
+const VERSION_ESQUEMA = '3';
 
 const MERCADOS = [
   'Fiori', 'Unicachi Norte Mayorista', 'Unicachi Norte Minorista', 'Unicachi Sur',
@@ -54,7 +54,9 @@ const ESQUEMA = {
   Cierres: ['id', 'registrado', 'fecha', 'hora', 'supervisor', 'mercado', 'pavos_inicio', 'pavos_entregados',
     'pavos_saldo', 'vales_reportados', 'observaciones'],
   Vales: ['codigo', 'pedido_id', 'fecha', 'impulsadora', 'mercado'],
-  Equipo: ['nombre', 'pin', 'rol', 'mercado', 'activo', 'usuario', 'contrasena'],
+  Equipo: ['nombre', 'pin', 'rol', 'mercado', 'activo', 'usuario', 'contrasena', 'celular'],
+  // Lista de vales impresos. Si tiene códigos, solo se aceptan esos (y del mercado indicado, si se llena).
+  Talonario: ['codigo', 'mercado', 'nota'],
   Config: ['clave', 'valor', 'nota'],
 };
 
@@ -112,6 +114,7 @@ function setup() {
     });
     filas.push(['Supervisor 1', pinAleatorio_(), 'supervisor', '', 'SI', 'supervisor', claveAleatoria_()]);
     eq.getRange(2, 1, filas.length, 7).setValues(filas);
+    // supervisor2 y coordinador los agrega asegurarAccesos_()
   }
 
   if (!P.getProperty('FOLDER_ID')) {
@@ -197,6 +200,8 @@ function doPost(e) {
     if (!u) return out_({ ok: false, code: 'auth', error: 'Usuario o contraseña incorrectos' });
     if (b.tipo === 'login') return out_({ ok: true, usuario: u });
     if (b.tipo === 'verificar_dni') return out_(verificarDni_(b, u));
+    if (b.tipo === 'verificar_vale') return out_(verificarVale_(b, u));
+    if (b.tipo === 'panel') return out_(panel_(u));
     const fn = { asistencia: asistencia_, pedido: pedido_, incidencia: incidencia_, cierre: cierre_ }[b.tipo];
     if (!fn) return out_({ ok: false, code: 'val', error: 'Tipo de registro desconocido' });
     if (!b.id) return out_({ ok: false, code: 'val', error: 'Falta el id del registro' });
@@ -210,9 +215,12 @@ function doPost(e) {
 /* Registros                                                           */
 /* ------------------------------------------------------------------ */
 
-/** La impulsadora siempre registra en su mercado; el supervisor elige uno de la lista. */
+/** Supervisores y coordinador: eligen mercado, hacen el cierre y ven el panel del equipo. */
+function esJefe_(u) { return /^(supervisor|coordinador)/.test(String(u && u.rol || '').toLowerCase()); }
+
+/** La impulsadora siempre registra en su mercado; supervisores y coordinador eligen uno de la lista. */
 function mercadoDe_(b, u) {
-  const m = u.rol === 'supervisor' ? limpio_(b.mercado) : limpio_(u.mercado);
+  const m = esJefe_(u) ? limpio_(b.mercado) : limpio_(u.mercado);
   if (!SACOS_POR_MERCADO[m]) throw val_('Mercado no válido: ' + (m || '(vacío)'));
   return m;
 }
@@ -263,13 +271,13 @@ function pedido_(b, u) {
     const previo = dniUsadoHoy_(dni, t.fecha);
     if (previo) throw val_('Este DNI ya recibió un vale hoy (' + previo.mercado + ', ' + previo.hora + '). Máximo 1 vale por DNI al día.');
     if (codigos.length !== 1) throw val_('Ingresa el código del vale');
+    const errVale = errorVale_(codigos[0], mercado);
+    if (errVale) throw val_(errVale);
     if (!nComp) throw val_('Falta el número de boleta o factura');
     if (!b.foto_comprobante) throw val_('Falta la foto de la boleta o factura');
     if (!b.firma) throw val_('Falta la firma del cliente');
     if (!b.foto_entrega) throw val_('Falta la foto del cliente recibiendo el vale');
     if (!b.compra_lima) throw val_('El canje solo aplica a compras en Lima');
-    const usados = codigos.filter(valeUsado_);
-    if (usados.length) throw val_('Vale ya registrado antes: ' + usados.join(', '));
   }
   if ((limpio_(b.celular) || dni) && !b.consentimiento) throw val_('Falta el consentimiento del cliente para guardar sus datos');
   if (nComp && comprobanteUsado_(nComp)) alertas.push('Comprobante repetido');
@@ -318,6 +326,70 @@ function verificarDni_(b, u) {
     : { ok: true, disponible: true, mensaje: 'Puede recibir su vale hoy' };
 }
 
+/**
+ * Regla del vale: solo se acepta un código de vale real.
+ * - Solo letras y números (3 a 20).
+ * - Si la hoja Talonario tiene códigos: tiene que estar en la lista y, si tiene mercado, ser de ese mercado.
+ * - Cada código se usa una sola vez.
+ */
+function errorVale_(codigo, mercado) {
+  if (!/^[A-Z0-9]{3,20}$/.test(codigo)) return 'El código del vale solo lleva letras y números (3 a 20)';
+  const lista = leer_('Talonario').filter(function (r) { return normCodigo_(r.codigo); });
+  if (lista.length) {
+    const r = lista.find(function (x) { return normCodigo_(x.codigo) === codigo; });
+    if (!r) return 'El código ' + codigo + ' no es un vale de la campaña. Revisa que esté bien escrito';
+    if (limpio_(r.mercado) && normUsuario_(r.mercado) !== normUsuario_(mercado)) return 'El vale ' + codigo + ' es del mercado ' + limpio_(r.mercado);
+  }
+  if (valeUsado_(codigo)) {
+    const v = leer_('Vales').find(function (x) { return x.codigo === codigo; }) || {};
+    return 'El vale ' + codigo + ' ya se registró' + (v.mercado ? ' (' + v.mercado + ', ' + v.fecha + ')' : '');
+  }
+  return '';
+}
+
+/** Consulta el código antes de guardar el canje. */
+function verificarVale_(b, u) {
+  const codigo = normCodigo_(b.codigo);
+  const err = errorVale_(codigo, mercadoDe_(b, u));
+  return err ? { ok: true, valido: false, mensaje: err } : { ok: true, valido: true, mensaje: 'Código válido' };
+}
+
+/** Panel para supervisores y coordinador: quién llegó, quién va tarde y cómo va cada una con su cuota. */
+function panel_(u) {
+  if (!esJefe_(u)) throw val_('El panel es solo para supervisores y coordinador');
+  const t = cuando_(), cfg = config_();
+  const meta = Number(cfg.meta_diaria_por_impulsadora) || 6;
+  const ingreso = /^\d{1,2}:\d{2}$/.test(cfg.hora_ingreso || '') ? ('0' + cfg.hora_ingreso).slice(-5) : '09:00';
+  const limite = minAHora_(horaAMin_(ingreso) + 10);
+  const equipo = leer_('Equipo').filter(function (x) { return !/^no$/i.test(x.activo); });
+  const jefes = equipo.filter(function (x) { return esJefe_(x); }).map(function (x) { return x.nombre; });
+  const hoy = function (r) { return r.fecha === t.fecha; };
+  const asis = leer_('Asistencia').filter(hoy), ped = leer_('Pedidos').filter(hoy), inc = leer_('Incidencias').filter(hoy);
+  const porHora = function (a, b) { return a.hora < b.hora ? -1 : a.hora > b.hora ? 1 : 0; };
+  const filas = equipo.filter(function (x) { return !esJefe_(x); }).map(function (x) {
+    const m = x.mercado;
+    const a = asis.filter(function (r) { return r.mercado === m && jefes.indexOf(r.impulsadora) < 0; }).sort(porHora);
+    const ent = a.filter(function (r) { return r.marca === 'Entrada'; })[0];
+    const sal = a.filter(function (r) { return r.marca === 'Salida'; }).pop();
+    const p = ped.filter(function (r) { return r.mercado === m; });
+    const i = inc.filter(function (r) { return r.mercado === m; }).sort(porHora);
+    const horas = a.concat(p, i).map(function (r) { return r.hora; }).sort();
+    return {
+      nombre: x.nombre, mercado: m, celular: limpio_(x.celular),
+      entrada: ent ? ent.hora : '', foto_entrada: ent ? ent.foto : '', tarde: !!ent && ent.hora > limite,
+      salida: sal ? sal.hora : '',
+      canjes: p.filter(function (r) { return r.es_canje === 'SÍ'; }).length, pedidos: p.length,
+      sacos: p.reduce(function (s, r) { return s + (Number(r.sacos_total) || 0); }, 0),
+      ultima: horas.length ? horas[horas.length - 1] : '',
+      incidencias: i.map(function (r) { return { hora: r.hora, tipo: r.tipo_incidencia, detalle: r.detalle }; }),
+      requeridos: SACOS_POR_MERCADO[m] || '',
+    };
+  });
+  return { ok: true, fecha: t.fecha, hora: t.hora, meta: meta, hora_ingreso: ingreso, limite: limite, filas: filas };
+}
+function horaAMin_(h) { const p = String(h).split(':'); return Number(p[0]) * 60 + Number(p[1] || 0); }
+function minAHora_(m) { return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
+
 function normDni_(s) { return limpio_(s).toUpperCase().replace(/[\s.-]+/g, ''); }
 function dniValido_(d) { return /^\d{8}$/.test(d) || /^[A-Z0-9]{9,12}$/.test(d); }
 
@@ -347,7 +419,7 @@ function incidencia_(b, u) {
 }
 
 function cierre_(b, u) {
-  if (u.rol !== 'supervisor') throw val_('Solo el supervisor puede enviar el cierre');
+  if (!esJefe_(u)) throw val_('Solo el supervisor o el coordinador puede enviar el cierre');
   if (existeId_('Cierres', b.id)) return { ok: true, duplicado: true };
   b.mercado = mercadoDe_(b, u);
   const ini = entero_(b.pavos_inicio), ent = entero_(b.pavos_entregados);
@@ -417,8 +489,10 @@ function auth_(b) {
 function asegurarAccesos_() {
   if (P.getProperty('ESQUEMA') === VERSION_ESQUEMA && config_().cliente_clave) return;
   conLock_(function () {
-    ['Pedidos', 'Equipo'].forEach(function (nombre) {
-      const sh = hoja_(nombre), cols = ESQUEMA[nombre];
+    ['Pedidos', 'Equipo', 'Talonario'].forEach(function (nombre) {
+      const cols = ESQUEMA[nombre];
+      const sh = hoja_(nombre) || ss_().insertSheet(nombre);
+      if (sh.getLastRow() === 0) sh.setFrozenRows(1);
       const actual = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getDisplayValues()[0];
       const esPrefijo = actual.every(function (h, i) { return h === '' || h === cols[i]; });
       if (!esPrefijo) throw new Error('Las columnas de la hoja ' + nombre + ' no coinciden con el sistema');
@@ -430,8 +504,15 @@ function asegurarAccesos_() {
       });
     });
 
-    // Usuario y contraseña para cada fila del equipo que no tenga
+    // Supervisor 2 y Coordinador de Trade (se agregan una sola vez)
     const eq = hoja_('Equipo');
+    const existentes = leer_('Equipo').map(function (x) { return normUsuario_(x.usuario) + '|' + normUsuario_(x.nombre); }).join(' ');
+    [['Supervisor 2', 'supervisor', 'supervisor2'], ['Coordinador de Trade', 'coordinador', 'coordinador']].forEach(function (j) {
+      if (existentes.indexOf(j[2] + '|') >= 0 || existentes.indexOf('|' + normUsuario_(j[0])) >= 0) return;
+      eq.getRange(eq.getLastRow() + 1, 1, 1, 8).setValues([[j[0], pinAleatorio_(), j[1], '', 'SI', j[2], claveAleatoria_(), '']]);
+    });
+
+    // Usuario y contraseña para cada fila del equipo que no tenga
     if (eq.getLastRow() > 1) {
       const cols = ESQUEMA.Equipo, iU = cols.indexOf('usuario'), iC = cols.indexOf('contrasena');
       const filas = eq.getRange(2, 1, eq.getLastRow() - 1, cols.length).getDisplayValues();
@@ -516,7 +597,7 @@ function limpio_(s) { return String(s === undefined || s === null ? '' : s).trim
 // "Unicachi Sur", "unicachi.sur" y "UnicachiSur" son el mismo usuario.
 function normUsuario_(s) { return limpio_(s).toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, ''); }
 function normClave_(s) { return limpio_(s).toLowerCase().replace(/\s+/g, ''); }
-function normCodigo_(s) { return limpio_(s).toUpperCase().replace(/\s+/g, ''); }
+function normCodigo_(s) { return limpio_(s).toUpperCase().normalize('NFD').replace(/[^A-Z0-9]/g, ''); }
 function entero_(n) { const x = parseInt(n, 10); return isNaN(x) || x < 0 ? 0 : x; }
 function num_(n) { const x = Number(n); return n === '' || n === null || n === undefined || isNaN(x) ? '' : x; }
 function pinAleatorio_() { return String(Math.floor(1000 + Math.random() * 9000)); }

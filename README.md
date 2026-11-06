@@ -39,7 +39,7 @@ Sin `API_URL` configurada, ambas páginas funcionan en **modo demo** (la app no 
 | Cumplimiento de la mecánica | Boleta + n.°, registro, firma, foto, compra en Lima (obligatorios para canjear) + validación del supervisor | KPI "Cumplimiento de mecánica" |
 | Número de canjes | Pedido con 8 sacos o más | KPI, gráficos y tablas |
 | Número de vales entregados | 1 vale cada 8 sacos, **cada uno con su código** (no se repiten) | KPI "Vales entregados" y detalle |
-| Evidencia fotográfica | Selfie de asistencia, boleta, entrega del vale y firma | Galería con detalle por canje |
+| Evidencia fotográfica | Selfie de asistencia, foto 1 de la boleta, foto 2 del cliente con el vale y firma | Galería con detalle por canje |
 | Incidencias y observaciones | Formulario de incidencias + observaciones del canje | Panel de incidencias |
 | Seguimiento periódico y consolidado final | — | Filtros Hoy / Ayer / 7 días / Campaña / Rango + **Descargar Excel (CSV)** e **Imprimir / PDF** |
 
@@ -68,7 +68,9 @@ Sin `API_URL` configurada, ambas páginas funcionan en **modo demo** (la app no 
 
 ### 4. Antes de salir a campo
 - En la pestaña **Equipo** cambia "Impulsadora 1…9" por los nombres reales y revisa el mercado de cada una.
-- **Accesos de impulsadoras**: uno por mercado, en la pestaña **Equipo** (columnas `usuario` y `contrasena`). Cada impulsadora solo registra en su mercado. El supervisor (usuario `supervisor`) elige el mercado.
+- **Accesos de impulsadoras**: uno por mercado, en la pestaña **Equipo** (columnas `usuario` y `contrasena`). Cada impulsadora solo registra en su mercado.
+- **Supervisores y coordinador** (`supervisor`, `supervisor2`, `coordinador`): eligen mercado, hacen el cierre de pavos y tienen el **Panel del equipo** (quién llegó, quién llegó tarde, quién no marcó entrada, canjes de cada una contra la cuota de 6, último registro, incidencias). Pon el celular de cada impulsadora en la columna `celular` de **Equipo** para que el panel muestre los botones de llamar y WhatsApp.
+- **Regla del vale**: el código solo acepta letras y números y cada vale se usa una vez. Si cargas los códigos impresos en la pestaña **Talonario** (columna `codigo`, y `mercado` si cada mercado tiene su talonario), solo se aceptan esos códigos.
 - **Acceso del cliente**: pestaña **Config**, filas `cliente_usuario` y `cliente_clave`.
 - Las contraseñas se pueden cambiar escribiendo en la hoja; aplica al instante.
 - En **Config** pon `fecha_inicio`, `fecha_fin` y `hora_ingreso`.

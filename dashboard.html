@@ -348,7 +348,7 @@ function diasOperacion() {
   return [...s].sort();
 }
 function impulsadorasPorMercado(m) {
-  const n = (D.equipo || []).filter(e => e.rol !== 'supervisor' && e.mercado === m).length;
+  const n = (D.equipo || []).filter(e => e.rol === 'impulsadora' && e.mercado === m).length;
   return n || 1;
 }
 
@@ -453,7 +453,7 @@ function semaforo(v, meta) {
 }
 function tablaEquipo() {
   const h = hoy();
-  const eq = (D.equipo || []).filter(e => e.rol !== 'supervisor' && (!F.mercado || e.mercado === F.mercado));
+  const eq = (D.equipo || []).filter(e => e.rol === 'impulsadora' && (!F.mercado || e.mercado === F.mercado));
   const A = D.asistencia.filter(a => a.fecha === h), P = D.pedidos.filter(p => p.fecha === h);
   const rows = eq.map(e => {
     const ent = A.find(a => a.impulsadora === e.nombre && a.marca === 'Entrada');
@@ -482,7 +482,7 @@ function tablaMercado(P, A, I, dias) {
       inc: I.filter(x => x.mercado === m).length,
     };
     for (const k in tot) tot[k] += r[k];
-    const nombres = [...new Set([...(D.equipo || []).filter(e => e.mercado === m && e.rol !== 'supervisor').map(e => e.nombre)])].join(', ');
+    const nombres = [...new Set([...(D.equipo || []).filter(e => e.mercado === m && e.rol === 'impulsadora').map(e => e.nombre)])].join(', ');
     return fila(m, nombres, r);
   });
   function fila(m, nombres, r, foot) {
@@ -598,7 +598,7 @@ function demo() {
   const ahoraH = parseInt(new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour: '2-digit', hour12: false }), 10);
   for (let d = dias - 1; d >= 0; d--) {
     const f = addDias(h, -d);
-    equipo.filter(e => e.rol !== 'supervisor').forEach(e => {
+    equipo.filter(e => e.rol === 'impulsadora').forEach(e => {
       if (rnd() < 0.06) return; // falta
       const ent = `0${8 + (rnd() < 0.15 ? 1 : 0)}:${String(Math.floor(rnd() * 50)).padStart(2, '0')}`.slice(-5);
       asistencia.push({ id: 'a' + n++, fecha: f, hora: ent, impulsadora: e.nombre, mercado: e.mercado, marca: 'Entrada' });
