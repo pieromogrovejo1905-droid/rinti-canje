@@ -94,6 +94,7 @@ function setup() {
   if (!P.getProperty('DASH_TOKEN')) {
     P.setProperty('DASH_TOKEN', Utilities.getUuid().replace(/-/g, '').slice(0, 20));
   }
+  asegurarAccesos_();
   verAccesos();
 }
 
@@ -101,6 +102,7 @@ function setup() {
 function verAccesos() {
   Logger.log('Google Sheet: ' + ss_().getUrl());
   Logger.log('Carpeta de fotos: https://drive.google.com/drive/folders/' + P.getProperty('FOLDER_ID'));
+  Logger.log('Usuarios y contraseñas: pestaña Config del Google Sheet (app_usuario, app_clave, cliente_usuario, cliente_clave)');
   Logger.log('Token del dashboard (k): ' + P.getProperty('DASH_TOKEN'));
   Logger.log('Link del cliente: https://TU-USUARIO.github.io/rinti-canje/dashboard.html?k=' + P.getProperty('DASH_TOKEN'));
 }
@@ -119,7 +121,8 @@ function doGet(e) {
   const accion = String((e && e.parameter && e.parameter.action) || '').toLowerCase();
   try {
     if (accion === 'config') {
-      return out_({ ok: true, equipo: equipoPublico_(), config: config_() });
+      asegurarAccesos_();
+      return out_({ ok: true, equipo: equipoPublico_(), config: configPublica_() });
     }
     if (accion === 'data') {
       if (!e.parameter.k || e.parameter.k !== P.getProperty('DASH_TOKEN')) {
@@ -132,7 +135,7 @@ function doGet(e) {
       return out_({
         ok: true,
         generado: ahora_(),
-        config: config_(),
+        config: configPublica_(),
         equipo: equipoPublico_(),
         asistencia: leer_('Asistencia'),
         pedidos: pedidos,
@@ -152,8 +155,15 @@ function doPost(e) {
     return out_({ ok: false, code: 'val', error: 'Datos inválidos' });
   }
   try {
-    const u = auth_(b.nombre, b.pin);
-    if (!u) return out_({ ok: false, code: 'auth', error: 'Nombre o PIN incorrecto' });
+    asegurarAccesos_();
+    if (b.tipo === 'login_cliente') {
+      const c = config_();
+      const ok = limpio_(b.usuario).toLowerCase() === String(c.cliente_usuario || '').toLowerCase()
+        && String(b.clave || '') === String(c.cliente_clave || '');
+      return out_(ok ? { ok: true, k: P.getProperty('DASH_TOKEN') } : { ok: false, code: 'auth', error: 'Usuario o contraseña incorrectos' });
+    }
+    const u = auth_(b);
+    if (!u) return out_({ ok: false, code: 'auth', error: 'Usuario, contraseña o nombre incorrectos' });
     if (b.tipo === 'login') return out_({ ok: true, usuario: u });
     const fn = { asistencia: asistencia_, pedido: pedido_, incidencia: incidencia_, cierre: cierre_ }[b.tipo];
     if (!fn) return out_({ ok: false, code: 'val', error: 'Tipo de registro desconocido' });
@@ -325,12 +335,54 @@ function existeId_(nombre, id) { return buscarEnColumna_(nombre, 'id', id); }
 function valeUsado_(codigo) { return buscarEnColumna_('Vales', 'codigo', codigo); }
 function comprobanteUsado_(n) { return buscarEnColumna_('Pedidos', 'n_comprobante', n); }
 
-function auth_(nombre, pin) {
-  if (!nombre || !pin) return null;
-  const r = leer_('Equipo').find(function (x) {
-    return x.nombre === nombre && String(x.pin).trim() === String(pin).trim() && !/^no$/i.test(x.activo);
+/**
+ * Acceso a la app de campo: usuario y contraseña generales (hoja Config) + nombre de la promotora.
+ * También acepta el PIN individual de la hoja Equipo, para cuando se pase a accesos individuales.
+ */
+function auth_(b) {
+  if (!b.nombre) return null;
+  const r = leer_('Equipo').find(function (x) { return x.nombre === b.nombre && !/^no$/i.test(x.activo); });
+  if (!r) return null;
+  const c = config_();
+  const okGeneral = !!(b.usuario && b.clave && c.app_usuario && c.app_clave
+    && limpio_(b.usuario).toLowerCase() === String(c.app_usuario).toLowerCase() && String(b.clave) === String(c.app_clave));
+  const okPin = !!(b.pin && r.pin && String(r.pin).trim() === String(b.pin).trim());
+  if (!okGeneral && !okPin) return null;
+  return { nombre: r.nombre, rol: String(r.rol || 'impulsadora').toLowerCase(), mercado: r.mercado };
+}
+
+/** Crea en la hoja Config los usuarios y contraseñas generales si aún no existen. */
+function asegurarAccesos_() {
+  const faltan = function () {
+    const c = config_();
+    const f = [];
+    if (!c.app_usuario) f.push(['app_usuario', 'promotoras', 'Usuario general de la app de campo']);
+    if (!c.app_clave) f.push(['app_clave', claveAleatoria_(), 'Contraseña general de la app de campo (puedes cambiarla aquí)']);
+    if (!c.cliente_usuario) f.push(['cliente_usuario', 'rinti', 'Usuario del dashboard del cliente']);
+    if (!c.cliente_clave) f.push(['cliente_clave', claveAleatoria_(), 'Contraseña del dashboard del cliente (puedes cambiarla aquí)']);
+    return f;
+  };
+  if (!faltan().length) return;
+  conLock_(function () {
+    const f = faltan();
+    if (!f.length) return;
+    const sh = hoja_('Config');
+    sh.getRange(sh.getLastRow() + 1, 1, f.length, 3).setValues(f);
   });
-  return r ? { nombre: r.nombre, rol: String(r.rol || 'impulsadora').toLowerCase(), mercado: r.mercado } : null;
+}
+
+function claveAleatoria_() {
+  const abc = 'abcdefghjkmnpqrstuvwxyz23456789';
+  let s = '';
+  for (let i = 0; i < 8; i++) s += abc.charAt(Math.floor(Math.random() * abc.length));
+  return s;
+}
+
+/** Config sin usuarios ni contraseñas, para enviar a las páginas. */
+function configPublica_() {
+  const c = config_();
+  Object.keys(c).forEach(function (k) { if (/usuario|clave|pin|token/i.test(k)) delete c[k]; });
+  return c;
 }
 
 function equipoPublico_() {

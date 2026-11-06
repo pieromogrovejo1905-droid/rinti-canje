@@ -146,14 +146,16 @@
     </div>
     <div class="card">
       <h2>Ingresar</h2>
+      <label class="f" for="lUsuario">Usuario</label>
+      <input id="lUsuario" type="text" autocapitalize="none" autocorrect="off" autocomplete="username" spellcheck="false">
+      <label class="f" for="lClave">Contraseña</label>
+      <input id="lClave" type="password" autocomplete="current-password">
       <label class="f" for="lNombre">Tu nombre</label>
       <select id="lNombre"><option value="">Cargando…</option></select>
-      <label class="f" for="lPin">PIN de 4 dígitos</label>
-      <input id="lPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off">
       <div id="lErr" class="err-box" hidden></div>
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
-    <p class="muted">Si no tienes PIN, pídeselo a tu supervisor.</p>
+    <p class="muted">El usuario y la contraseña te los da tu supervisor.</p>
   </section>
 
   <!-- HOME -->
@@ -338,7 +340,7 @@ function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<'
 function showErr(view, msg) { const b = $('[data-err]', view); if (!b) return toast(msg); b.textContent = msg; b.hidden = !msg; if (msg) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 
 /* ---------- estado ---------- */
-const S = { user: store.get('user', null), pin: store.get('pin', null), equipo: store.get('equipo', null), meta: Number(store.get('meta', C.META_DIARIA)) || 6 };
+const S = { user: store.get('user', null), cred: store.get('cred', null), equipo: store.get('equipo', null), meta: Number(store.get('meta', C.META_DIARIA)) || 6 };
 const cntKey = () => `cnt:${hoy()}:${S.user && S.user.nombre}`;
 const asisKey = () => `asis:${hoy()}:${S.user && S.user.nombre}`;
 const mercKey = () => `merc:${hoy()}:${S.user && S.user.nombre}`;
@@ -374,7 +376,7 @@ const DB = (() => {
 
 async function registrar(payload, resumen) {
   payload.id = payload.id || uid();
-  payload.nombre = S.user.nombre; payload.pin = S.pin;
+  payload.nombre = S.user.nombre; payload.usuario = S.cred.usuario; payload.clave = S.cred.clave;
   payload.capturado = new Date().toISOString();
   try {
     const res = await enviar(payload);
@@ -527,28 +529,29 @@ async function cargarEquipo() {
   sel.innerHTML = '<option value="">Elige tu nombre</option>' + S.equipo.map(p => `<option>${esc(p.nombre)}</option>`).join('');
 }
 $('#btnLogin').onclick = async () => {
-  const nombre = $('#lNombre').value, pin = $('#lPin').value.trim();
+  const nombre = $('#lNombre').value, usuario = $('#lUsuario').value.trim(), clave = $('#lClave').value;
   const err = m => { $('#lErr').textContent = m; $('#lErr').hidden = !m; };
+  if (!usuario) return err('Escribe el usuario');
+  if (!clave) return err('Escribe la contraseña');
   if (!nombre) return err('Elige tu nombre');
-  if (!/^\d{4,6}$/.test(pin)) return err('El PIN tiene 4 dígitos');
   err(''); overlay(true, 'Verificando…');
   try {
     let user;
     if (DEMO) user = S.equipo.find(p => p.nombre === nombre);
     else {
-      const r = await enviar({ tipo: 'login', nombre, pin });
+      const r = await enviar({ tipo: 'login', nombre, usuario, clave });
       if (!r.ok) return err(r.error || 'No se pudo ingresar');
       user = r.usuario;
     }
-    S.user = user; S.pin = pin; store.set('user', user); store.set('pin', pin);
-    $('#lPin').value = ''; entrar();
+    S.user = user; S.cred = { usuario, clave }; store.set('user', user); store.set('cred', S.cred);
+    $('#lClave').value = ''; entrar();
   } catch { err('Sin conexión. Necesitas señal para ingresar la primera vez.'); }
   finally { overlay(false); }
 };
 $('#btnSalir').onclick = async () => {
   const pend = (await DB.all().catch(() => [])).filter(i => i.estado === 'pendiente').length;
   if (pend && !confirm(`Tienes ${pend} registro(s) sin enviar. Si cierras sesión se enviarán cuando vuelvas a entrar. ¿Salir igual?`)) return;
-  S.user = null; S.pin = null; store.del('user'); store.del('pin'); show('vLogin'); cargarEquipo();
+  S.user = null; S.cred = null; store.del('user'); store.del('cred'); show('vLogin'); cargarEquipo();
 };
 
 /* ---------- home ---------- */
@@ -707,7 +710,8 @@ $('#goCola').onclick = () => { refrescarCola(); show('vCola'); };
 if (DEMO) { const b = $('#banner'); b.hidden = false; b.textContent = 'Modo práctica: no se guarda nada.'; }
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 cargarEquipo();
-if (S.user && S.pin) entrar(); else show('vLogin');
+store.del('pin');
+if (S.user && S.cred) entrar(); else show('vLogin');
 })();
 </script>
 </body>

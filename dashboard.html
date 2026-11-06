@@ -87,6 +87,25 @@
   .inc{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--grid)}
   .inc:last-child{border-bottom:0}
   .inc .t{color:var(--muted);font-size:12px;white-space:nowrap;min-width:84px}
+  .login{position:fixed;inset:0;z-index:30;background:var(--bg);display:grid;place-items:center;padding:16px;overflow:auto}
+  .lbox{width:100%;max-width:400px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 20px 50px rgba(11,31,77,.15)}
+  .ltop{background:var(--accent);color:#fff;padding:24px 24px 22px;position:relative;overflow:hidden}
+  .ltop::before{content:"";position:absolute;right:-40px;top:-50px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.1)}
+  .ltop::after{content:"";position:absolute;right:80px;bottom:-24px;width:50px;height:50px;border-radius:50%;background:#7db843}
+  .ltop .logos{display:flex;align-items:center;gap:12px;margin-bottom:16px;position:relative}
+  .ltop .logos .free{height:42px} .ltop .logos .r{height:46px;width:46px;border-radius:11px} .ltop .logos .sep{width:1px;height:38px;background:rgba(255,255,255,.4)}
+  .ltop .kick{font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.85;font-weight:600;position:relative}
+  .ltop h1{margin:2px 0 4px;font-size:26px;font-weight:800;position:relative}
+  .ltop p{margin:0;opacity:.9;position:relative}
+  .ltop .marcas{margin-top:14px;position:relative}
+  .lform{padding:20px 24px 24px}
+  .lform label{display:block;font-weight:600;font-size:13px;margin:12px 0 6px;color:var(--ink2)}
+  .lform input{width:100%;font:inherit;font-size:16px;padding:11px 12px;border:1px solid #cfd3ea;border-radius:10px}
+  .lform input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  .lform button{width:100%;margin-top:18px;border:0;border-radius:12px;background:var(--accent);color:#fff;font:inherit;font-weight:700;font-size:16px;padding:13px;cursor:pointer}
+  .lform button:disabled{opacity:.6}
+  .lerr{background:var(--err-soft);color:var(--err);padding:10px 12px;border-radius:10px;margin-top:12px;font-size:13.5px}
+  .salir{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:99px;padding:5px 12px;font:inherit;font-size:13px;cursor:pointer}
   .modal{position:fixed;inset:0;background:rgba(20,20,22,.6);display:grid;place-items:center;z-index:20;padding:16px}
   .modal[hidden]{display:none}
   .mbox{background:#fff;border-radius:16px;max-width:900px;width:100%;max-height:90vh;overflow:auto;padding:18px}
@@ -117,7 +136,7 @@
     <div class="brand"><img class="free" src="img/free-blanco.png" alt="Free Marketing"><span class="sep"></span><img class="r" src="img/rinti-r.png" alt="Rinti">
       <div class="tt"><div class="kick">Rinti × Free</div><b id="tCampana">Canje Rinti</b><span>Seguimiento de impulsadoras en mercados</span></div></div>
     <div class="hright"><div class="marcas"><img src="img/ricocan.png" alt="Ricocan"><img src="img/ricocat.png" alt="Ricocat"></div>
-      <div class="live" id="live"><i></i><span id="liveTxt">Cargando…</span></div></div>
+      <div style="display:flex;gap:8px;align-items:center"><div class="live" id="live"><i></i><span id="liveTxt">Cargando…</span></div><button class="salir noprint" id="btnSalir" hidden>Salir</button></div></div>
   </div>
 </header>
 <div class="filters">
@@ -190,6 +209,26 @@
 
 <div class="modal" id="modal" hidden><div class="mbox" id="mbox"></div></div>
 
+<div class="login" id="login" hidden>
+  <form class="lbox" id="loginForm" autocomplete="on">
+    <div class="ltop">
+      <div class="logos"><img class="free" src="img/free-blanco.png" alt="Free Marketing"><span class="sep"></span><img class="r" src="img/rinti-r.png" alt="Rinti"></div>
+      <div class="kick">Rinti × Free</div>
+      <h1>Canje Rinti</h1>
+      <p>Seguimiento en vivo de la campaña</p>
+      <div class="marcas"><img src="img/ricocan.png" alt="Ricocan"><img src="img/ricocat.png" alt="Ricocat"></div>
+    </div>
+    <div class="lform">
+      <label for="gUsuario">Usuario</label>
+      <input id="gUsuario" type="text" autocomplete="username" autocapitalize="none" spellcheck="false">
+      <label for="gClave">Contraseña</label>
+      <input id="gClave" type="password" autocomplete="current-password">
+      <div class="lerr" id="gErr" hidden></div>
+      <button type="submit" id="gBtn">Ingresar</button>
+    </div>
+  </form>
+</div>
+
 <script src="config.js"></script>
 <script>
 (() => {
@@ -198,7 +237,30 @@ const C = window.RINTI;
 const qs = new URLSearchParams(location.search);
 const API = (C.API_URL || '').trim();
 const DEMO = !API || qs.get('demo') === '1';
-const K = qs.get('k') || '';
+const guardarK = v => { try { v ? localStorage.setItem('rinti:k', v) : localStorage.removeItem('rinti:k'); } catch {} };
+let K = qs.get('k') || (() => { try { return localStorage.getItem('rinti:k') || ''; } catch { return ''; } })();
+if (qs.get('k')) { guardarK(K); history.replaceState(null, '', location.pathname); } // no dejar la clave visible en el link
+
+/* ---------- login del cliente ---------- */
+function mostrarLogin(msg) {
+  $('#login').hidden = false; $('#btnSalir').hidden = true;
+  $('#gErr').textContent = msg || ''; $('#gErr').hidden = !msg;
+  setTimeout(() => $('#gUsuario').focus(), 50);
+}
+async function ingresar(ev) {
+  ev.preventDefault();
+  const usuario = $('#gUsuario').value.trim(), clave = $('#gClave').value;
+  const err = m => { $('#gErr').textContent = m; $('#gErr').hidden = !m; };
+  if (!usuario || !clave) return err('Escribe tu usuario y contraseña');
+  err(''); $('#gBtn').disabled = true; $('#gBtn').textContent = 'Ingresando…';
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ tipo: 'login_cliente', usuario, clave }) }).then(r => r.json());
+    if (!r.ok) return err(r.error || 'No se pudo ingresar');
+    K = r.k; guardarK(K); $('#gClave').value = '';
+    await cargar();
+  } catch { err('Sin conexión. Intenta de nuevo.'); }
+  finally { $('#gBtn').disabled = false; $('#gBtn').textContent = 'Ingresar'; }
+}
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const num = v => { const x = Number(String(v).replace(',', '.')); return isFinite(x) ? x : 0; };
@@ -219,10 +281,12 @@ async function cargar() {
   try {
     if (DEMO) { D = D || demo(); }
     else {
-      if (!K) throw new Error('Falta la clave de acceso en el link (?k=...)');
+      if (!K) { mostrarLogin(); return; }
       const r = await fetch(`${API}?action=data&k=${encodeURIComponent(K)}`).then(r => r.json());
+      if (!r.ok && r.code === 'auth') { K = ''; guardarK(''); D = null; mostrarLogin('Tu sesión venció. Vuelve a ingresar.'); return; }
       if (!r.ok) throw new Error(r.error || 'No se pudo cargar');
       D = r;
+      $('#login').hidden = true; $('#btnSalir').hidden = false;
     }
     normalizar(); pintar();
     $('#live').classList.remove('off');
@@ -564,8 +628,10 @@ function demo() {
   return { ok: true, config: { meta_diaria_por_impulsadora: '6', impulsadoras_planificadas: '9', hora_ingreso: '09:00', fecha_inicio: addDias(h, -(dias - 1)) }, equipo, asistencia, pedidos, incidencias, cierres };
 }
 
+$('#loginForm').addEventListener('submit', ingresar);
+$('#btnSalir').onclick = () => { K = ''; guardarK(''); D = null; location.reload(); };
 cargar();
-if (!DEMO) setInterval(cargar, 60000);
+if (!DEMO) setInterval(() => { if (K) cargar(); }, 60000);
 })();
 </script>
 </body>
