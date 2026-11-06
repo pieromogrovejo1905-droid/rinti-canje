@@ -189,8 +189,8 @@ function doPost(e) {
     asegurarAccesos_();
     if (b.tipo === 'login_cliente') {
       const c = config_();
-      const ok = limpio_(b.usuario).toLowerCase() === limpio_(c.cliente_usuario).toLowerCase()
-        && limpio_(b.clave) !== '' && limpio_(b.clave) === limpio_(c.cliente_clave);
+      const ok = normUsuario_(b.usuario) === normUsuario_(c.cliente_usuario)
+        && normClave_(b.clave) !== '' && normClave_(b.clave) === normClave_(c.cliente_clave);
       return out_(ok ? { ok: true, k: P.getProperty('DASH_TOKEN') } : { ok: false, code: 'auth', error: 'Usuario o contraseña incorrectos' });
     }
     const u = auth_(b);
@@ -402,10 +402,10 @@ function comprobanteUsado_(n) { return buscarEnColumna_('Pedidos', 'n_comprobant
 
 /** Acceso a la app de campo: un usuario y contraseña por mercado (hoja Equipo, columnas usuario y contrasena). */
 function auth_(b) {
-  const usuario = limpio_(b.usuario).toLowerCase(), clave = limpio_(b.clave);
+  const usuario = normUsuario_(b.usuario), clave = normClave_(b.clave);
   if (!usuario || !clave) return null;
   const r = leer_('Equipo').find(function (x) {
-    return limpio_(x.usuario).toLowerCase() === usuario && limpio_(x.contrasena) === clave && !/^no$/i.test(x.activo);
+    return normUsuario_(x.usuario) === usuario && normClave_(x.contrasena) === clave && !/^no$/i.test(x.activo);
   });
   return r ? { nombre: r.nombre, rol: String(r.rol || 'impulsadora').toLowerCase(), mercado: r.mercado, usuario: r.usuario } : null;
 }
@@ -512,6 +512,10 @@ function cuando_(iso) {
 }
 function ahora_() { return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss'); }
 function limpio_(s) { return String(s === undefined || s === null ? '' : s).trim().slice(0, 500); }
+// Tolera lo que pasa al escribir en el celular: mayúsculas, tildes, espacios o puntos de más.
+// "Unicachi Sur", "unicachi.sur" y "UnicachiSur" son el mismo usuario.
+function normUsuario_(s) { return limpio_(s).toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, ''); }
+function normClave_(s) { return limpio_(s).toLowerCase().replace(/\s+/g, ''); }
 function normCodigo_(s) { return limpio_(s).toUpperCase().replace(/\s+/g, ''); }
 function entero_(n) { const x = parseInt(n, 10); return isNaN(x) || x < 0 ? 0 : x; }
 function num_(n) { const x = Number(n); return n === '' || n === null || n === undefined || isNaN(x) ? '' : x; }

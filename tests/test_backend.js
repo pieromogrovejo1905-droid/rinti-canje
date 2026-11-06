@@ -114,4 +114,6 @@ ok('dashboard: sin token no hay datos', get({ action: 'data', k: 'x' }).code ===
 const viejo = sheets.Equipo.rows; viejo.forEach(x => x.length = 5); viejo[0] = ['nombre', 'pin', 'rol', 'mercado', 'activo'];
 props.ESQUEMA = '1'; get({ action: 'config' });
 ok('migración agrega usuario y contraseña', sheets.Equipo.rows[0].join() === 'nombre,pin,rol,mercado,activo,usuario,contrasena' && sheets.Equipo.rows.slice(1).every(x => x[5] && x[6]), sheets.Equipo.rows[1].join());
+ok('login tolerante: "Unicachi Sur" y clave en mayúsculas', post({ tipo: 'login', usuario: ' Unicachi Sur ', clave: sheets.Equipo.rows.find(e => e[5] === 'unicachi.sur')[6].toUpperCase() }).ok);
+ok('login cliente con clave en mayúsculas', !!post({ tipo: 'login_cliente', usuario: 'RINTI', clave: cfg.cliente_clave.toUpperCase() }).k);
 res.join('\n');
