@@ -71,7 +71,7 @@ Sin `API_URL` configurada, ambas páginas funcionan en **modo demo** (la app no 
 - En la pestaña **Equipo** cambia "Impulsadora 1…9" por los nombres reales y revisa el mercado de cada una.
 - **Accesos de impulsadoras**: uno por mercado, en la pestaña **Equipo** (columnas `usuario` y `contrasena`). Cada impulsadora solo registra en su mercado.
 - **Supervisores y coordinador** (`supervisor`, `supervisor2`, `coordinador`): eligen mercado, hacen el cierre de pavos y tienen el **Panel del equipo** (quién llegó, quién llegó tarde, quién no marcó entrada, canjes de cada una contra la cuota de 6, último registro, incidencias). Pon el celular de cada impulsadora en la columna `celular` de **Equipo** para que el panel muestre los botones de llamar y WhatsApp.
-- **Regla del vale**: el código solo acepta letras y números y cada vale se usa una vez. Si cargas los códigos impresos en la pestaña **Talonario** (columna `codigo`, y `mercado` si cada mercado tiene su talonario), solo se aceptan esos códigos.
+- **Regla del vale**: el código son **exactamente 7 números** y cada vale se usa una vez. Si cargas los códigos impresos en la pestaña **Talonario** (columna `codigo`, y `mercado` si cada mercado tiene su talonario), solo se aceptan esos códigos.
 - **Acceso del cliente**: pestaña **Config**, filas `cliente_usuario` y `cliente_clave`.
 - **Dos dashboards**:
   - **Cliente** (`dashboard.html`): avance, canjes, sacos, asistencia (cada impulsadora solo como Activa / Inactiva), cuadre de pavos y evidencias. No muestra incidencias, observaciones, tardanzas, celulares ni el DNI completo.

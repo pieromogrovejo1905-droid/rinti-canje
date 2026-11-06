@@ -366,12 +366,12 @@ function verificarDni_(b, u) {
 
 /**
  * Regla del vale: solo se acepta un código de vale real.
- * - Solo letras y números (3 a 20).
+ * - Solo números, exactamente 7 dígitos.
  * - Si la hoja Talonario tiene códigos: tiene que estar en la lista y, si tiene mercado, ser de ese mercado.
  * - Cada código se usa una sola vez.
  */
 function errorVale_(codigo, mercado) {
-  if (!/^[A-Z0-9]{3,20}$/.test(codigo)) return 'El código del vale solo lleva letras y números (3 a 20)';
+  if (!/^\d{7}$/.test(codigo)) return 'El código del vale tiene 7 números' + (/[A-Z]/.test(codigo) ? ' (sin letras)' : codigo ? ' (escribiste ' + codigo.length + ')' : '');
   const lista = leer_('Talonario').filter(function (r) { return normCodigo_(r.codigo); });
   if (lista.length) {
     const r = lista.find(function (x) { return normCodigo_(x.codigo) === codigo; });

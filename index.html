@@ -175,7 +175,7 @@
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
-    <p class="muted" style="font-size:12px;opacity:.7">Versión 5</p>
+    <p class="muted" style="font-size:12px;opacity:.7">Versión 6</p>
   </section>
 
   <!-- HOME -->
@@ -266,9 +266,9 @@
       <h3 style="margin-top:0">4 · Vale y entrega</h3>
       <div class="vale-box" style="margin-top:0">
         <label class="f" for="pCodigo">🎟️ Código del vale (obligatorio)</label>
-        <div class="codes"><input id="pCodigo" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="24" placeholder="Código impreso en el vale"></div>
+        <div class="codes"><input id="pCodigo" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="7" placeholder="7 números del vale"></div>
         <div class="dni-estado" id="pValeEstado" hidden></div>
-        <div class="muted">Solo letras y números, tal como está impreso. Cada vale se registra una sola vez.</div>
+        <div class="muted">Son 7 números, tal como están impresos en el vale. Cada vale se registra una sola vez.</div>
       </div>
       <label class="f"><span class="foto-n">2</span>Foto del cliente con el vale</label>
       <label class="foto" data-key="foto_entrega"><input type="file" accept="image/*" capture="environment"><span class="ph">🎟️</span><span class="t">Tomar foto del cliente<small>El cliente con el vale en la mano</small></span></label>
@@ -679,14 +679,14 @@ $('#pDni').addEventListener('input', e => {
     } catch { if ($('#pDni').value === d) estadoDni('info', 'Sin señal: no se pudo verificar. Se revisará al enviar.'); }
   }, 450);
 });
-const normCodigo = s => String(s || '').toUpperCase().normalize('NFD').replace(/[^A-Z0-9]/g, '');
+const normCodigo = s => String(s || '').replace(/\D/g, '').slice(0, 7); // el vale de pavo: solo 7 números
 let valeT, valeMalo = '';
 function estadoVale(cls, txt) { const el = $('#pValeEstado'); el.className = 'dni-estado ' + cls; el.textContent = txt; el.hidden = !txt; }
 $('#pCodigo').addEventListener('input', e => {
   const c = normCodigo(e.target.value); if (e.target.value !== c) e.target.value = c;
   valeMalo = ''; clearTimeout(valeT);
   if (!c) return estadoVale('', '');
-  if (c.length < 3) return estadoVale('info', 'Escribe el código completo');
+  if (c.length < 7) return estadoVale('info', `Faltan ${7 - c.length} número${7 - c.length === 1 ? '' : 's'} (el código tiene 7)`);
   if (DEMO) return estadoVale('ok', '✔ Código válido');
   estadoVale('info', 'Verificando código…');
   valeT = setTimeout(async () => {
@@ -749,7 +749,7 @@ $('#pEnviar').onclick = async () => {
     if (!$('#pNComp').value.trim()) return e('Falta el número de boleta o factura');
     if (!foto('vPedido', 'foto_comprobante')) return e('Falta la foto 1: la boleta o factura');
     if (!codigos[0]) return e('Falta el código del vale');
-    if (codigos[0].length < 3) return e('El código del vale está incompleto');
+    if (!/^\d{7}$/.test(codigos[0])) return e('El código del vale tiene 7 números');
     if (valeMalo) return e(valeMalo);
     if (!foto('vPedido', 'foto_entrega')) return e('Falta la foto 2: el cliente con el vale');
     if (firma.vacia()) return e('Falta la firma del cliente');
