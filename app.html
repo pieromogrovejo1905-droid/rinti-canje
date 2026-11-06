@@ -175,7 +175,7 @@
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
-    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión 7</p>
+    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión 8</p>
   </section>
 
   <!-- HOME -->
@@ -402,6 +402,14 @@ const normDni = s => String(s || '').toUpperCase().replace(/[\s.-]+/g, '');
 const dniValido = d => /^\d{8}$/.test(d) || /^[A-Z0-9]{9,12}$/.test(d);
 // Accesos v3 (un usuario por mercado): las sesiones anteriores deben volver a ingresar.
 if (store.get('authv', 0) !== 3) { store.del('user'); store.del('cred'); store.set('authv', 3); S.user = null; S.cred = null; }
+// Inicio oficial de la campaña: se borra lo que quedó de las pruebas en este teléfono
+// (contadores, marcas de asistencia, DNIs del día y registros sin enviar). La sesión se mantiene.
+const INICIO_OFICIAL = '2026-11-06';
+if (!DEMO && store.get('oficial', '') !== INICIO_OFICIAL) {
+  try { Object.keys(localStorage).filter(k => /^rinti:(cnt|asis|dnis|merc):/.test(k)).forEach(k => localStorage.removeItem(k)); } catch {}
+  try { indexedDB.deleteDatabase('rinti'); } catch {}
+  store.set('oficial', INICIO_OFICIAL);
+}
 
 /* ---------- red ---------- */
 async function enviar(payload) {
