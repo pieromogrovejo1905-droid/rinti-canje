@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Canje Rinti · Registro</title>
+<meta name="theme-color" content="#b4122b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --accent:#b4122b; --accent-ink:#fff; --accent-soft:#fbe9ec;
+    --bg:#f4f4f2; --card:#fff; --ink:#1c1c1e; --ink2:#55565b; --muted:#8a8b90; --line:#e3e3e0;
+    --ok:#1d7a46; --ok-soft:#e6f4ec; --warn:#a15c00; --warn-soft:#fdf1df; --err:#b42318; --err-soft:#fdecea;
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0}
+  body{font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);
+       padding-bottom:calc(24px + env(safe-area-inset-bottom));-webkit-tap-highlight-color:transparent}
+  .top{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);
+       padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .top b{display:block;font-size:17px}
+  .top small{opacity:.85;font-size:13px}
+  .top button{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:10px;padding:8px 12px;font:inherit;font-size:14px}
+  .banner{background:var(--warn-soft);color:var(--warn);font-size:14px;padding:8px 16px;border-bottom:1px solid #f0dcbc}
+  main{max-width:560px;margin:0 auto;padding:16px}
+  .view[hidden]{display:none}
+  h2{font-size:20px;margin:4px 0 14px}
+  h3{font-size:15px;margin:22px 0 8px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
+  label.f{display:block;font-weight:600;font-size:14px;margin:14px 0 6px}
+  label.f .opt{font-weight:400;color:var(--muted)}
+  input[type=text],input[type=tel],input[type=number],input[type=password],select,textarea{
+    width:100%;font:inherit;font-size:17px;padding:12px;border:1px solid #cfcfcb;border-radius:10px;background:#fff;color:var(--ink)}
+  textarea{min-height:84px;resize:vertical}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:54px;border:0;border-radius:12px;
+       font:inherit;font-weight:700;font-size:17px;background:var(--accent);color:var(--accent-ink);margin-top:12px;cursor:pointer}
+  .btn.sec{background:#fff;color:var(--ink);border:1px solid #cfcfcb}
+  .btn.ghost{background:transparent;color:var(--accent);min-height:44px;margin-top:4px}
+  .btn:disabled{opacity:.55}
+  .btn .ic{font-size:22px}
+  .back{background:none;border:0;color:var(--accent);font:inherit;font-weight:600;padding:4px 0;margin-bottom:6px;cursor:pointer}
+  .row{display:flex;gap:10px}
+  .row>*{flex:1}
+  .muted{color:var(--muted);font-size:14px}
+  .hello{font-size:15px;color:var(--ink2)}
+  .hello b{color:var(--ink);font-size:20px;display:block}
+  .progress{height:12px;background:#ececea;border-radius:99px;overflow:hidden;margin:10px 0 6px}
+  .progress i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+  .big{font-size:34px;font-weight:800;line-height:1}
+  .big small{font-size:16px;color:var(--muted);font-weight:600}
+  .stats{display:flex;gap:18px;margin-top:8px;font-size:14px;color:var(--ink2)}
+  .stats b{color:var(--ink)}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:4px 10px;border-radius:99px;background:#ececea;color:var(--ink2)}
+  .pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.err{background:var(--err-soft);color:var(--err)}
+  /* Stepper de sacos */
+  .stepper{display:flex;align-items:center;border:1px solid #cfcfcb;border-radius:12px;background:#fff;overflow:hidden}
+  .stepper button{width:56px;height:56px;border:0;background:#f2f2ef;font-size:26px;font-weight:700;color:var(--ink);cursor:pointer}
+  .stepper input{border:0!important;text-align:center;font-size:22px!important;font-weight:700;outline:none!important;padding:0!important;height:56px}
+  .sacos{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .sacos .lbl{font-size:13px;font-weight:700;margin-bottom:6px}
+  .sacos .lbl small{font-weight:500;color:var(--muted)}
+  .summary{margin-top:14px;padding:14px;border-radius:12px;background:#f2f2ef;font-size:15px}
+  .summary.canje{background:var(--ok-soft);color:#0f4f2c}
+  .summary b{font-size:18px}
+  /* Fotos */
+  .foto{display:flex;align-items:center;gap:12px;border:2px dashed #cfcfcb;border-radius:12px;padding:12px;background:#fafaf8;cursor:pointer;min-height:76px}
+  .foto input{display:none}
+  .foto .ph{width:56px;height:56px;border-radius:10px;background:#ececea;display:grid;place-items:center;font-size:26px;flex:none;overflow:hidden}
+  .foto .ph img{width:100%;height:100%;object-fit:cover}
+  .foto .t{font-weight:600}
+  .foto .t small{display:block;font-weight:400;color:var(--muted);font-size:13px}
+  .foto.done{border-style:solid;border-color:var(--ok);background:var(--ok-soft)}
+  /* Firma */
+  .firma-wrap{border:1px solid #cfcfcb;border-radius:12px;background:#fff;position:relative}
+  .firma-wrap canvas{display:block;width:100%;height:170px;touch-action:none;border-radius:12px}
+  .firma-wrap .hint{position:absolute;left:0;right:0;bottom:38px;text-align:center;color:#c4c4c0;pointer-events:none;font-size:14px}
+  .firma-wrap .linea{position:absolute;left:24px;right:24px;bottom:34px;border-top:1px dashed #d4d4d0;pointer-events:none}
+  .firma-tools{display:flex;justify-content:flex-end}
+  .firma-tools button{background:none;border:0;color:var(--accent);font:inherit;font-weight:600;padding:8px 0;cursor:pointer}
+  .check{display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;margin-top:10px;font-size:15px}
+  .check input{width:24px;height:24px;flex:none;accent-color:var(--accent);margin:0}
+  .codes{display:grid;gap:8px}
+  .codes input{text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+  .gps{font-size:13px;color:var(--muted);margin-top:10px}
+  .err-box{background:var(--err-soft);color:var(--err);padding:12px;border-radius:10px;font-size:15px;margin-top:12px}
+  .cola-item{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;margin-bottom:8px;font-size:14px}
+  .cola-item .e{color:var(--err);margin-top:4px}
+  #toast{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto;
+         background:#1c1c1e;color:#fff;padding:14px 16px;border-radius:12px;font-size:15px;opacity:0;transform:translateY(20px);
+         transition:.25s;pointer-events:none;z-index:50}
+  #toast.on{opacity:1;transform:none}
+  .overlay{position:fixed;inset:0;background:rgba(255,255,255,.75);display:grid;place-items:center;z-index:40;font-weight:600}
+  .overlay[hidden]{display:none}
+  .spin{width:36px;height:36px;border:4px solid #ddd;border-top-color:var(--accent);border-radius:50%;animation:s 1s linear infinite;margin:0 auto 10px}
+  @keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div><b>Canje Rinti</b><small id="hdrSub">Registro de campo</small></div>
+  <button id="btnSalir" hidden>Salir</button>
+</header>
+<div id="banner" class="banner" hidden></div>
+
+<main>
+  <!-- LOGIN -->
+  <section id="vLogin" class="view">
+    <div class="card">
+      <h2>Ingresar</h2>
+      <label class="f" for="lNombre">Tu nombre</label>
+      <select id="lNombre"><option value="">Cargando…</option></select>
+      <label class="f" for="lPin">PIN de 4 dígitos</label>
+      <input id="lPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off">
+      <div id="lErr" class="err-box" hidden></div>
+      <button class="btn" id="btnLogin">Entrar</button>
+    </div>
+    <p class="muted">Si no tienes PIN, pídeselo a tu supervisor.</p>
+  </section>
+
+  <!-- HOME -->
+  <section id="vHome" class="view" hidden>
+    <div class="card">
+      <div class="hello">Hola,<b id="hNombre"></b></div>
+      <label class="f" for="hMercado">Hoy trabajo en</label>
+      <select id="hMercado"></select>
+      <div style="margin-top:10px" id="hAsis"></div>
+    </div>
+    <div class="card">
+      <div class="muted">Canjes de hoy</div>
+      <div class="big" id="hCanjes">0 <small>/ 6</small></div>
+      <div class="progress"><i id="hBar" style="width:0"></i></div>
+      <div class="stats"><span>Pedidos <b id="hPedidos">0</b></span><span>Vales <b id="hVales">0</b></span><span>Sacos <b id="hSacos">0</b></span></div>
+    </div>
+    <button class="btn" id="goAsis"><span class="ic">🕘</span><span id="goAsisTxt">Marcar entrada</span></button>
+    <button class="btn" id="goPedido"><span class="ic">🧾</span>Registrar pedido / canje</button>
+    <button class="btn sec" id="goInc"><span class="ic">⚠️</span>Reportar incidencia</button>
+    <button class="btn sec" id="goCierre" hidden><span class="ic">📦</span>Cierre del día (supervisor)</button>
+    <button class="btn sec" id="goCola" hidden><span class="ic">📤</span><span id="goColaTxt">Pendientes por enviar</span></button>
+  </section>
+
+  <!-- ASISTENCIA -->
+  <section id="vAsis" class="view" hidden>
+    <button class="back" data-back>‹ Volver</button>
+    <h2 id="aTitulo">Marcar entrada</h2>
+    <div class="card">
+      <div class="muted">Mercado</div><div id="aMercado" style="font-weight:700;font-size:18px"></div>
+      <label class="f">Selfie con uniforme en el punto</label>
+      <label class="foto" data-key="foto"><input type="file" accept="image/*" capture="user"><span class="ph">🤳</span><span class="t">Tomar selfie<small>Que se vea el uniforme y el puesto</small></span></label>
+      <div class="gps" data-gps></div>
+      <div class="err-box" data-err hidden></div>
+      <button class="btn" id="aEnviar">Enviar</button>
+    </div>
+  </section>
+
+  <!-- PEDIDO / CANJE -->
+  <section id="vPedido" class="view" hidden>
+    <button class="back" data-back>‹ Volver</button>
+    <h2>Registrar pedido / canje</h2>
+
+    <div class="card">
+      <h3 style="margin-top:0">1 · Cliente</h3>
+      <div id="pPuestoSelWrap" hidden>
+        <label class="f" for="pPuestoSel">Puesto (Mercado Productores)</label>
+        <select id="pPuestoSel"></select>
+      </div>
+      <div id="pPuestoTxtWrap">
+        <label class="f" for="pPuesto">Puesto <span class="opt">(n.° o nombre, opcional)</span></label>
+        <input id="pPuesto" type="text" placeholder="Ej. Pto. 125 · Bodega Rosita">
+      </div>
+      <label class="f" for="pCliente">Nombre del cliente o negocio</label>
+      <input id="pCliente" type="text" autocomplete="off">
+      <label class="f" for="pCelular">Celular <span class="opt">(opcional)</span></label>
+      <input id="pCelular" type="tel" inputmode="numeric" maxlength="9" placeholder="9 dígitos">
+      <label class="check" id="pConsWrap" hidden><input type="checkbox" id="pCons"><span>El cliente acepta que Rinti y la agencia guarden su celular para validar el canje (Ley 29733).</span></label>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">2 · Sacos comprados</h3>
+      <div class="sacos">
+        <div><div class="lbl">Ricocan <small>22 kg</small></div>
+          <div class="stepper"><button type="button" data-step="pRc" data-d="-1">−</button><input id="pRc" type="number" inputmode="numeric" min="0" value="0"><button type="button" data-step="pRc" data-d="1">+</button></div></div>
+        <div><div class="lbl">Ricocat <small>15 kg</small></div>
+          <div class="stepper"><button type="button" data-step="pRt" data-d="-1">−</button><input id="pRt" type="number" inputmode="numeric" min="0" value="0"><button type="button" data-step="pRt" data-d="1">+</button></div></div>
+      </div>
+      <div class="summary" id="pResumen"></div>
+
+      <label class="f" for="pTipoComp">Comprobante</label>
+      <div class="row">
+        <select id="pTipoComp" style="flex:0 0 40%"><option>Boleta</option><option>Factura</option></select>
+        <input id="pNComp" type="text" placeholder="Serie y número" autocapitalize="characters">
+      </div>
+      <label class="f">Foto de la boleta o factura <span class="opt" id="pCompOpt">(opcional)</span></label>
+      <label class="foto" data-key="foto_comprobante"><input type="file" accept="image/*" capture="environment"><span class="ph">🧾</span><span class="t">Tomar foto<small>Que se lean los 8 sacos y el total</small></span></label>
+    </div>
+
+    <div class="card" id="pCanje" hidden>
+      <h3 style="margin-top:0">3 · Canje del vale</h3>
+      <label class="f">Código del vale <span id="pValesN"></span></label>
+      <div class="codes" id="pCodes"></div>
+      <label class="f">Foto del cliente recibiendo el vale</label>
+      <label class="foto" data-key="foto_entrega"><input type="file" accept="image/*" capture="environment"><span class="ph">🎟️</span><span class="t">Tomar foto<small>Cliente con el vale en la mano</small></span></label>
+      <label class="f">Firma del cliente</label>
+      <div class="firma-wrap"><canvas id="pFirma"></canvas><div class="linea"></div><div class="hint" id="pFirmaHint">Firme aquí con el dedo</div></div>
+      <div class="firma-tools"><button type="button" id="pFirmaClr">Borrar firma</button></div>
+      <label class="check"><input type="checkbox" id="pLima"><span>Compra realizada en Lima (no aplica delivery a provincias).</span></label>
+    </div>
+
+    <div class="card">
+      <label class="f" for="pObs" style="margin-top:0">Observaciones <span class="opt">(opcional)</span></label>
+      <textarea id="pObs" placeholder="Algo que el supervisor deba saber"></textarea>
+      <div class="gps" data-gps></div>
+      <div class="err-box" data-err hidden></div>
+      <button class="btn" id="pEnviar">Guardar</button>
+    </div>
+  </section>
+
+  <!-- INCIDENCIA -->
+  <section id="vInc" class="view" hidden>
+    <button class="back" data-back>‹ Volver</button>
+    <h2>Reportar incidencia</h2>
+    <div class="card">
+      <label class="f" for="iTipo" style="margin-top:0">Tipo</label>
+      <select id="iTipo"></select>
+      <label class="f" for="iDet">¿Qué pasó?</label>
+      <textarea id="iDet"></textarea>
+      <label class="f">Foto <span class="opt">(opcional)</span></label>
+      <label class="foto" data-key="foto"><input type="file" accept="image/*" capture="environment"><span class="ph">📷</span><span class="t">Tomar foto</span></label>
+      <div class="gps" data-gps></div>
+      <div class="err-box" data-err hidden></div>
+      <button class="btn" id="iEnviar">Enviar incidencia</button>
+    </div>
+  </section>
+
+  <!-- CIERRE SUPERVISOR -->
+  <section id="vCierre" class="view" hidden>
+    <button class="back" data-back>‹ Volver</button>
+    <h2>Cierre del día</h2>
+    <div class="card">
+      <label class="f" for="cMercado" style="margin-top:0">Mercado</label>
+      <select id="cMercado"></select>
+      <div class="row">
+        <div><label class="f" for="cIni">Pavos al inicio</label><input id="cIni" type="number" inputmode="numeric" min="0"></div>
+        <div><label class="f" for="cEnt">Pavos entregados</label><input id="cEnt" type="number" inputmode="numeric" min="0"></div>
+      </div>
+      <div class="summary" id="cSaldo">Saldo: —</div>
+      <label class="f" for="cVales">Vales entregados según planilla</label>
+      <input id="cVales" type="number" inputmode="numeric" min="0">
+      <label class="f" for="cObs">Observaciones <span class="opt">(opcional)</span></label>
+      <textarea id="cObs"></textarea>
+      <div class="err-box" data-err hidden></div>
+      <button class="btn" id="cEnviar">Enviar cierre</button>
+    </div>
+  </section>
+
+  <!-- COLA -->
+  <section id="vCola" class="view" hidden>
+    <button class="back" data-back>‹ Volver</button>
+    <h2>Pendientes por enviar</h2>
+    <p class="muted">Se envían solos cuando hay señal. No cierres sesión hasta que esta lista quede vacía.</p>
+    <div id="colaLista"></div>
+    <button class="btn" id="colaReintentar">Reintentar ahora</button>
+  </section>
+</main>
+
+<div class="overlay" id="overlay" hidden><div><div class="spin"></div><span id="overlayTxt">Enviando…</span></div></div>
+<div id="toast"></div>
+
+<script src="config.js"></script>
+<script>
+(() => {
+'use strict';
+const C = window.RINTI;
+const API = (C.API_URL || '').trim();
+const DEMO = !API;
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+
+/* ---------- utilidades ---------- */
+const hoy = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+const horaLima = () => new Date().toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit', hour12: false });
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('rinti:' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('rinti:' + k, JSON.stringify(v)); } catch {} },
+  del(k) { try { localStorage.removeItem('rinti:' + k); } catch {} },
+};
+let toastT;
+function toast(msg, ms = 3200) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms); }
+function overlay(on, txt = 'Enviando…') { $('#overlay').hidden = !on; $('#overlayTxt').textContent = txt; }
+function opts(sel, list, val) { sel.innerHTML = list.map(o => `<option${o === val ? ' selected' : ''}>${esc(o)}</option>`).join(''); }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function showErr(view, msg) { const b = $('[data-err]', view); if (!b) return toast(msg); b.textContent = msg; b.hidden = !msg; if (msg) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+
+/* ---------- estado ---------- */
+const S = { user: store.get('user', null), pin: store.get('pin', null), equipo: store.get('equipo', null), meta: Number(store.get('meta', C.META_DIARIA)) || 6 };
+const cntKey = () => `cnt:${hoy()}:${S.user && S.user.nombre}`;
+const asisKey = () => `asis:${hoy()}:${S.user && S.user.nombre}`;
+const mercKey = () => `merc:${hoy()}:${S.user && S.user.nombre}`;
+function contador(delta) {
+  const c = store.get(cntKey(), { pedidos: 0, canjes: 0, vales: 0, sacos: 0 });
+  if (delta) { for (const k in delta) c[k] = Math.max(0, (c[k] || 0) + delta[k]); store.set(cntKey(), c); }
+  return c;
+}
+function mercadoHoy() { return store.get(mercKey(), (S.user && S.user.mercado) || C.MERCADOS[0]); }
+
+/* ---------- red ---------- */
+async function enviar(payload) {
+  if (DEMO) { await new Promise(r => setTimeout(r, 700)); return { ok: true, demo: true }; }
+  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 60000);
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload), signal: ctrl.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+/* ---------- cola sin conexión (IndexedDB) ---------- */
+const DB = (() => {
+  let p;
+  const db = () => p || (p = new Promise((res, rej) => {
+    const r = indexedDB.open('rinti', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('cola', { keyPath: 'id' });
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const tx = async (mode, fn) => { const d = await db(); return new Promise((res, rej) => { const t = d.transaction('cola', mode); const q = fn(t.objectStore('cola')); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); }); };
+  return { put: x => tx('readwrite', s => s.put(x)), del: id => tx('readwrite', s => s.delete(id)), all: () => tx('readonly', s => s.getAll()) };
+})();
+
+async function registrar(payload, resumen) {
+  payload.id = payload.id || uid();
+  payload.nombre = S.user.nombre; payload.pin = S.pin;
+  payload.capturado = new Date().toISOString();
+  try {
+    const res = await enviar(payload);
+    if (res.ok) return { estado: 'enviado', res };
+    if (res.code === 'val' || res.code === 'auth') return { estado: 'error', error: res.error };
+    throw new Error(res.error || 'Error del servidor');
+  } catch (err) {
+    await DB.put({ id: payload.id, payload, resumen, estado: 'pendiente', creado: Date.now(), error: String(err.message || err) });
+    refrescarCola();
+    return { estado: 'cola' };
+  }
+}
+
+let procesando = false;
+async function procesarCola() {
+  if (procesando) return; procesando = true;
+  try {
+    const items = (await DB.all()).filter(i => i.estado === 'pendiente').sort((a, b) => a.creado - b.creado);
+    for (const it of items) {
+      let res;
+      try { res = await enviar(it.payload); } catch { break; } // sin señal: se intenta luego
+      if (res.ok) { await DB.del(it.id); continue; }
+      if (res.code === 'val' || res.code === 'auth') {
+        it.estado = 'rechazado'; it.error = res.error; await DB.put(it);
+        if (it.resumen && it.resumen.delta && it.resumen.fecha === hoy()) {
+          const neg = {}; for (const k in it.resumen.delta) neg[k] = -it.resumen.delta[k]; contador(neg);
+        }
+        toast('Un registro fue rechazado: ' + res.error, 6000);
+      } else break;
+    }
+  } finally { procesando = false; refrescarCola(); pintarHome(); }
+}
+
+async function refrescarCola() {
+  const items = await DB.all().catch(() => []);
+  const pend = items.filter(i => i.estado === 'pendiente').length;
+  const rech = items.filter(i => i.estado === 'rechazado').length;
+  $('#goCola').hidden = !items.length;
+  $('#goColaTxt').textContent = `Pendientes por enviar (${pend})` + (rech ? ` · ${rech} con error` : '');
+  $('#colaLista').innerHTML = items.length ? items.sort((a, b) => a.creado - b.creado).map(i => `
+    <div class="cola-item"><b>${esc(i.resumen && i.resumen.titulo || i.payload.tipo)}</b>
+      <div class="muted">${new Date(i.creado).toLocaleString('es-PE')}</div>
+      ${i.estado === 'rechazado' ? `<div class="e">Rechazado: ${esc(i.error)}. Vuelve a registrarlo con los datos correctos.</div>
+        <button class="btn ghost" data-del="${esc(i.id)}">Quitar de la lista</button>` : '<span class="pill warn">Esperando señal</span>'}
+    </div>`).join('') : '<p class="muted">Todo enviado ✔</p>';
+}
+$('#colaLista').addEventListener('click', async e => { const id = e.target.dataset.del; if (id) { await DB.del(id); refrescarCola(); } });
+$('#colaReintentar').onclick = () => { toast('Reintentando…'); procesarCola(); };
+window.addEventListener('online', procesarCola);
+setInterval(procesarCola, 30000);
+
+/* ---------- GPS ---------- */
+let gps = null, gpsErr = false;
+function pedirGPS() {
+  if (!navigator.geolocation) { gpsErr = true; pintarGPS(); return; }
+  navigator.geolocation.getCurrentPosition(p => {
+    gps = { lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6), acc: Math.round(p.coords.accuracy) }; gpsErr = false; pintarGPS();
+  }, () => { gpsErr = true; pintarGPS(); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+}
+function pintarGPS() {
+  $$('[data-gps]').forEach(el => el.textContent = gps ? `📍 Ubicación registrada (±${gps.acc} m)` : gpsErr ? '📍 Sin ubicación: activa el GPS si puedes (igual se puede enviar)' : '📍 Buscando ubicación…');
+}
+
+/* ---------- fotos ---------- */
+const fotos = {};
+async function comprimir(file, max = 1280, q = 0.7) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', q);
+  } finally { URL.revokeObjectURL(url); }
+}
+$$('.foto').forEach(lab => {
+  const input = $('input', lab);
+  input.addEventListener('change', async () => {
+    const f = input.files && input.files[0]; if (!f) return;
+    const view = lab.closest('.view').id;
+    try {
+      const data = await comprimir(f);
+      fotos[view + ':' + lab.dataset.key] = data;
+      $('.ph', lab).innerHTML = `<img src="${data}" alt="">`;
+      lab.classList.add('done');
+      $('.t', lab).firstChild.textContent = 'Foto lista · tocar para cambiar';
+    } catch { toast('No se pudo leer la foto, intenta otra vez'); }
+    input.value = '';
+  });
+});
+function resetFotos(view) {
+  $$('.foto', view).forEach(lab => {
+    delete fotos[view.id + ':' + lab.dataset.key];
+    lab.classList.remove('done');
+    $('.ph', lab).textContent = { foto: view.id === 'vAsis' ? '🤳' : '📷', foto_comprobante: '🧾', foto_entrega: '🎟️' }[lab.dataset.key] || '📷';
+    $('.t', lab).firstChild.textContent = view.id === 'vAsis' ? 'Tomar selfie' : 'Tomar foto';
+  });
+}
+const foto = (view, key) => fotos[view + ':' + key] || '';
+
+/* ---------- firma ---------- */
+const firma = (() => {
+  const cv = $('#pFirma'); const ctx = cv.getContext('2d'); let vacia = true, dib = false, last;
+  function ajustar() {
+    const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111';
+    limpiar();
+  }
+  function limpiar() { ctx.clearRect(0, 0, cv.width, cv.height); vacia = true; $('#pFirmaHint').hidden = false; }
+  const pos = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  cv.addEventListener('pointerdown', e => { dib = true; last = pos(e); cv.setPointerCapture(e.pointerId); ctx.beginPath(); ctx.arc(last[0], last[1], 1.1, 0, 7); ctx.fillStyle = '#111'; ctx.fill(); });
+  cv.addEventListener('pointermove', e => { if (!dib) return; const p = pos(e); ctx.beginPath(); ctx.moveTo(last[0], last[1]); ctx.lineTo(p[0], p[1]); ctx.stroke(); last = p; if (vacia) { vacia = false; $('#pFirmaHint').hidden = true; } });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => cv.addEventListener(ev, () => dib = false));
+  function dataUrl() {
+    if (vacia) return '';
+    const w = 600, h = Math.round(w * cv.height / cv.width), o = document.createElement('canvas'); o.width = w; o.height = h;
+    const c = o.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, w, h); c.drawImage(cv, 0, 0, w, h);
+    return o.toDataURL('image/jpeg', 0.85);
+  }
+  $('#pFirmaClr').onclick = limpiar;
+  return { ajustar, limpiar, dataUrl, vacia: () => vacia };
+})();
+
+/* ---------- navegación ---------- */
+function show(id) {
+  $$('.view').forEach(v => v.hidden = v.id !== id);
+  $('#btnSalir').hidden = id === 'vLogin';
+  window.scrollTo(0, 0);
+  if (id !== 'vHome' && id !== 'vLogin' && id !== 'vCola') { gps = null; gpsErr = false; pintarGPS(); pedirGPS(); }
+}
+$$('[data-back]').forEach(b => b.onclick = () => { show('vHome'); pintarHome(); });
+window.addEventListener('popstate', () => {});
+
+/* ---------- login ---------- */
+async function cargarEquipo() {
+  if (DEMO) {
+    S.equipo = C.MERCADOS.map((m, i) => ({ nombre: 'Impulsadora ' + (i + 1), rol: 'impulsadora', mercado: m })).concat([{ nombre: 'Supervisor 1', rol: 'supervisor', mercado: '' }]);
+  } else {
+    try {
+      const r = await fetch(API + '?action=config').then(r => r.json());
+      if (r.ok) {
+        S.equipo = r.equipo; store.set('equipo', r.equipo);
+        const m = Number(r.config && r.config.meta_diaria_por_impulsadora); if (m) { S.meta = m; store.set('meta', m); }
+      }
+    } catch { /* sin señal: usa lo guardado */ }
+  }
+  const sel = $('#lNombre');
+  if (!S.equipo || !S.equipo.length) { sel.innerHTML = '<option value="">Sin conexión: abre la app con señal la primera vez</option>'; return; }
+  sel.innerHTML = '<option value="">Elige tu nombre</option>' + S.equipo.map(p => `<option>${esc(p.nombre)}</option>`).join('');
+}
+$('#btnLogin').onclick = async () => {
+  const nombre = $('#lNombre').value, pin = $('#lPin').value.trim();
+  const err = m => { $('#lErr').textContent = m; $('#lErr').hidden = !m; };
+  if (!nombre) return err('Elige tu nombre');
+  if (!/^\d{4,6}$/.test(pin)) return err('El PIN tiene 4 dígitos');
+  err(''); overlay(true, 'Verificando…');
+  try {
+    let user;
+    if (DEMO) user = S.equipo.find(p => p.nombre === nombre);
+    else {
+      const r = await enviar({ tipo: 'login', nombre, pin });
+      if (!r.ok) return err(r.error || 'No se pudo ingresar');
+      user = r.usuario;
+    }
+    S.user = user; S.pin = pin; store.set('user', user); store.set('pin', pin);
+    $('#lPin').value = ''; entrar();
+  } catch { err('Sin conexión. Necesitas señal para ingresar la primera vez.'); }
+  finally { overlay(false); }
+};
+$('#btnSalir').onclick = async () => {
+  const pend = (await DB.all().catch(() => [])).filter(i => i.estado === 'pendiente').length;
+  if (pend && !confirm(`Tienes ${pend} registro(s) sin enviar. Si cierras sesión se enviarán cuando vuelvas a entrar. ¿Salir igual?`)) return;
+  S.user = null; S.pin = null; store.del('user'); store.del('pin'); show('vLogin'); cargarEquipo();
+};
+
+/* ---------- home ---------- */
+function entrar() {
+  $('#hdrSub').textContent = S.user.nombre;
+  opts($('#hMercado'), C.MERCADOS, mercadoHoy());
+  $('#goCierre').hidden = S.user.rol !== 'supervisor';
+  show('vHome'); pintarHome(); refrescarCola(); procesarCola();
+}
+$('#hMercado').onchange = e => { store.set(mercKey(), e.target.value); };
+function pintarHome() {
+  if (!S.user) return;
+  $('#hNombre').textContent = S.user.nombre;
+  const c = contador();
+  $('#hCanjes').innerHTML = `${c.canjes} <small>/ ${S.meta} canjes</small>`;
+  $('#hBar').style.width = Math.min(100, c.canjes / S.meta * 100) + '%';
+  $('#hPedidos').textContent = c.pedidos; $('#hVales').textContent = c.vales; $('#hSacos').textContent = c.sacos;
+  const a = store.get(asisKey(), {});
+  $('#hAsis').innerHTML = (a.Entrada ? `<span class="pill ok">✔ Entrada ${a.Entrada}</span> ` : '<span class="pill warn">Falta marcar entrada</span> ') + (a.Salida ? `<span class="pill ok">✔ Salida ${a.Salida}</span>` : '');
+  $('#goAsisTxt').textContent = !a.Entrada ? 'Marcar entrada' : !a.Salida ? 'Marcar salida' : 'Asistencia completa';
+  $('#goAsis').disabled = !!(a.Entrada && a.Salida);
+}
+
+/* ---------- asistencia ---------- */
+let marca = 'Entrada';
+$('#goAsis').onclick = () => {
+  const a = store.get(asisKey(), {}); marca = a.Entrada ? 'Salida' : 'Entrada';
+  $('#aTitulo').textContent = 'Marcar ' + marca.toLowerCase(); $('#aMercado').textContent = mercadoHoy();
+  resetFotos($('#vAsis')); showErr($('#vAsis'), ''); show('vAsis');
+};
+$('#aEnviar').onclick = async () => {
+  const v = $('#vAsis');
+  if (!foto('vAsis', 'foto')) return showErr(v, 'Falta la selfie');
+  showErr(v, ''); overlay(true);
+  const r = await registrar({ tipo: 'asistencia', marca, mercado: mercadoHoy(), lat: gps && gps.lat, lng: gps && gps.lng, acc: gps && gps.acc, foto: foto('vAsis', 'foto') },
+    { titulo: `${marca} · ${mercadoHoy()}`, fecha: hoy() });
+  overlay(false);
+  if (r.estado === 'error') return showErr(v, r.error);
+  const a = store.get(asisKey(), {}); a[marca] = horaLima(); store.set(asisKey(), a);
+  toast(r.estado === 'cola' ? `${marca} guardada sin señal. Se enviará sola.` : `${marca} registrada ✔`);
+  show('vHome'); pintarHome();
+};
+
+/* ---------- pedido / canje ---------- */
+const n = id => Math.max(0, parseInt($('#' + id).value, 10) || 0);
+$$('[data-step]').forEach(b => b.onclick = () => { const i = $('#' + b.dataset.step); i.value = Math.max(0, (parseInt(i.value, 10) || 0) + Number(b.dataset.d)); calcPedido(); });
+['pRc', 'pRt'].forEach(id => $('#' + id).addEventListener('input', calcPedido));
+$('#pRc').addEventListener('focus', e => e.target.select()); $('#pRt').addEventListener('focus', e => e.target.select());
+$('#pCelular').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, ''); $('#pConsWrap').hidden = !e.target.value; });
+let valesPrev = -1;
+function calcPedido() {
+  const rc = n('pRc'), rt = n('pRt'), tot = rc + rt, vales = Math.floor(tot / C.SACOS_POR_VALE), kg = rc * C.KG.ricocan + rt * C.KG.ricocat;
+  const falta = C.SACOS_POR_VALE - (tot % C.SACOS_POR_VALE);
+  const box = $('#pResumen');
+  box.className = 'summary' + (vales ? ' canje' : '');
+  box.innerHTML = !tot ? 'Indica cuántos sacos compró el cliente.'
+    : vales ? `<b>${tot} sacos → ${vales} vale${vales > 1 ? 's' : ''} de pavo</b><br>${kg} kg en total${tot % C.SACOS_POR_VALE ? ` · le faltan ${falta} para otro vale` : ''}`
+    : `<b>${tot} saco${tot > 1 ? 's' : ''}: pedido sin canje</b><br>Le faltan ${falta} para el vale de pavo`;
+  $('#pCanje').hidden = !vales;
+  $('#pCompOpt').textContent = vales ? '(obligatoria)' : '(opcional)';
+  if (vales !== valesPrev) {
+    const prev = $$('#pCodes input').map(i => i.value);
+    $('#pCodes').innerHTML = Array.from({ length: vales }, (_, i) => `<input type="text" autocapitalize="characters" autocomplete="off" placeholder="Código del vale ${vales > 1 ? i + 1 : ''}" value="${esc(prev[i] || '')}">`).join('');
+    $('#pValesN').textContent = vales > 1 ? `(${vales} vales)` : '';
+    if (vales && valesPrev <= 0) requestAnimationFrame(firma.ajustar);
+    valesPrev = vales;
+  }
+}
+function onMercadoPedido() {
+  const prod = /productores/i.test(mercadoHoy());
+  $('#pPuestoSelWrap').hidden = !prod; $('#pPuestoTxtWrap').hidden = prod;
+}
+$('#goPedido').onclick = () => {
+  const v = $('#vPedido');
+  ['pPuesto', 'pCliente', 'pCelular', 'pNComp', 'pObs'].forEach(id => $('#' + id).value = '');
+  $('#pRc').value = 0; $('#pRt').value = 0; $('#pCons').checked = false; $('#pLima').checked = false; $('#pConsWrap').hidden = true;
+  $('#pPuestoSel').innerHTML = '<option value="">Elige el puesto</option>' + C.PUESTOS_PRODUCTORES.map(p => `<option>${esc(p)}</option>`).join('');
+  resetFotos(v); showErr(v, ''); valesPrev = -1; onMercadoPedido(); calcPedido(); show('vPedido');
+};
+$('#pEnviar').onclick = async () => {
+  const v = $('#vPedido');
+  const rc = n('pRc'), rt = n('pRt'), tot = rc + rt, vales = Math.floor(tot / C.SACOS_POR_VALE);
+  const prod = /productores/i.test(mercadoHoy());
+  const puesto = prod ? $('#pPuestoSel').value : $('#pPuesto').value.trim();
+  const codigos = $$('#pCodes input').map(i => i.value.trim().toUpperCase().replace(/\s+/g, ''));
+  const cel = $('#pCelular').value.trim();
+  const e = m => showErr(v, m);
+  if (prod && !puesto) return e('Elige el puesto de Mercado Productores');
+  if (!$('#pCliente').value.trim()) return e('Falta el nombre del cliente o negocio');
+  if (cel && cel.length !== 9) return e('El celular debe tener 9 dígitos');
+  if (cel && !$('#pCons').checked) return e('Marca el consentimiento del cliente o borra el celular');
+  if (!tot) return e('Indica la cantidad de sacos');
+  if (vales) {
+    if (!$('#pNComp').value.trim()) return e('Falta el número de boleta o factura');
+    if (!foto('vPedido', 'foto_comprobante')) return e('Falta la foto de la boleta o factura');
+    if (codigos.some(c => !c)) return e(vales > 1 ? 'Faltan códigos de vale' : 'Falta el código del vale');
+    if (new Set(codigos).size !== codigos.length) return e('Hay códigos de vale repetidos');
+    if (!foto('vPedido', 'foto_entrega')) return e('Falta la foto del cliente recibiendo el vale');
+    if (firma.vacia()) return e('Falta la firma del cliente');
+    if (!$('#pLima').checked) return e('Confirma que la compra es en Lima');
+  }
+  e(''); overlay(true);
+  const payload = {
+    tipo: 'pedido', mercado: mercadoHoy(), puesto, cliente: $('#pCliente').value.trim(), celular: cel, consentimiento: $('#pCons').checked,
+    ricocan: rc, ricocat: rt, tipo_comprobante: $('#pTipoComp').value, n_comprobante: $('#pNComp').value.trim().toUpperCase(),
+    codigos: vales ? codigos : [], foto_comprobante: foto('vPedido', 'foto_comprobante'),
+    foto_entrega: vales ? foto('vPedido', 'foto_entrega') : '', firma: vales ? firma.dataUrl() : '',
+    compra_lima: $('#pLima').checked, observaciones: $('#pObs').value.trim(), lat: gps && gps.lat, lng: gps && gps.lng,
+  };
+  const delta = { pedidos: 1, canjes: vales ? 1 : 0, vales, sacos: tot };
+  const r = await registrar(payload, { titulo: `${vales ? 'Canje' : 'Pedido'} · ${payload.cliente} · ${tot} sacos${vales ? ' · vale ' + codigos.join(', ') : ''}`, fecha: hoy(), delta });
+  overlay(false);
+  if (r.estado === 'error') return e(r.error);
+  contador(delta);
+  toast(r.estado === 'cola' ? 'Guardado sin señal. Se enviará solo.' : vales ? `Canje registrado ✔ (${vales} vale${vales > 1 ? 's' : ''})` : 'Pedido registrado ✔');
+  show('vHome'); pintarHome();
+};
+
+/* ---------- incidencia ---------- */
+$('#goInc').onclick = () => { const v = $('#vInc'); opts($('#iTipo'), C.TIPOS_INCIDENCIA); $('#iDet').value = ''; resetFotos(v); showErr(v, ''); show('vInc'); };
+$('#iEnviar').onclick = async () => {
+  const v = $('#vInc');
+  if (!$('#iDet').value.trim()) return showErr(v, 'Describe qué pasó');
+  showErr(v, ''); overlay(true);
+  const r = await registrar({ tipo: 'incidencia', mercado: mercadoHoy(), tipo_incidencia: $('#iTipo').value, detalle: $('#iDet').value.trim(), foto: foto('vInc', 'foto'), lat: gps && gps.lat, lng: gps && gps.lng },
+    { titulo: `Incidencia · ${$('#iTipo').value}`, fecha: hoy() });
+  overlay(false);
+  if (r.estado === 'error') return showErr(v, r.error);
+  toast(r.estado === 'cola' ? 'Incidencia guardada sin señal. Se enviará sola.' : 'Incidencia enviada ✔');
+  show('vHome');
+};
+
+/* ---------- cierre ---------- */
+$('#goCierre').onclick = () => { const v = $('#vCierre'); opts($('#cMercado'), C.MERCADOS); ['cIni', 'cEnt', 'cVales', 'cObs'].forEach(id => $('#' + id).value = ''); calcSaldo(); showErr(v, ''); show('vCierre'); };
+function calcSaldo() { const i = n('cIni'), e = n('cEnt'); $('#cSaldo').textContent = $('#cIni').value === '' ? 'Saldo: —' : `Saldo de pavos: ${i - e}`; }
+['cIni', 'cEnt'].forEach(id => $('#' + id).addEventListener('input', calcSaldo));
+$('#cEnviar').onclick = async () => {
+  const v = $('#vCierre');
+  if ($('#cIni').value === '' || $('#cEnt').value === '' || $('#cVales').value === '') return showErr(v, 'Completa pavos al inicio, entregados y vales');
+  if (n('cEnt') > n('cIni')) return showErr(v, 'Los entregados no pueden ser más que los del inicio');
+  showErr(v, ''); overlay(true);
+  const r = await registrar({ tipo: 'cierre', mercado: $('#cMercado').value, pavos_inicio: n('cIni'), pavos_entregados: n('cEnt'), vales_reportados: n('cVales'), observaciones: $('#cObs').value.trim() },
+    { titulo: `Cierre · ${$('#cMercado').value}`, fecha: hoy() });
+  overlay(false);
+  if (r.estado === 'error') return showErr(v, r.error);
+  toast(r.estado === 'cola' ? 'Cierre guardado sin señal. Se enviará solo.' : 'Cierre enviado ✔');
+  show('vHome');
+};
+
+$('#goCola').onclick = () => { refrescarCola(); show('vCola'); };
+
+/* ---------- inicio ---------- */
+if (DEMO) { const b = $('#banner'); b.hidden = false; b.textContent = 'Modo demo: no se envía nada. Configura API_URL en config.js para usarla de verdad.'; }
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+cargarEquipo();
+if (S.user && S.pin) entrar(); else show('vLogin');
+})();
+</script>
+</body>
+</html>
