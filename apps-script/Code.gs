@@ -363,7 +363,8 @@ function panel_(u) {
   const limite = minAHora_(horaAMin_(ingreso) + 10);
   const equipo = leer_('Equipo').filter(function (x) { return !/^no$/i.test(x.activo); });
   const jefes = equipo.filter(function (x) { return esJefe_(x); }).map(function (x) { return x.nombre; });
-  const hoy = function (r) { return r.fecha === t.fecha; };
+  // Sheets puede guardar "09:54" como "9:54": se normaliza para comparar bien las horas.
+  const hoy = function (r) { if (r.fecha !== t.fecha) return false; r.hora = hhmm_(r.hora); return true; };
   const asis = leer_('Asistencia').filter(hoy), ped = leer_('Pedidos').filter(hoy), inc = leer_('Incidencias').filter(hoy);
   const porHora = function (a, b) { return a.hora < b.hora ? -1 : a.hora > b.hora ? 1 : 0; };
   const filas = equipo.filter(function (x) { return !esJefe_(x); }).map(function (x) {
@@ -387,6 +388,7 @@ function panel_(u) {
   });
   return { ok: true, fecha: t.fecha, hora: t.hora, meta: meta, hora_ingreso: ingreso, limite: limite, filas: filas };
 }
+function hhmm_(h) { const m = String(h || '').match(/(\d{1,2}):(\d{2})/); return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : ''; }
 function horaAMin_(h) { const p = String(h).split(':'); return Number(p[0]) * 60 + Number(p[1] || 0); }
 function minAHora_(m) { return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
 
@@ -489,6 +491,7 @@ function auth_(b) {
 function asegurarAccesos_() {
   if (P.getProperty('ESQUEMA') === VERSION_ESQUEMA && config_().cliente_clave) return;
   conLock_(function () {
+    if (P.getProperty('ESQUEMA') === VERSION_ESQUEMA && config_().cliente_clave) return; // otro pedido ya lo hizo
     ['Pedidos', 'Equipo', 'Talonario'].forEach(function (nombre) {
       const cols = ESQUEMA[nombre];
       const sh = hoja_(nombre) || ss_().insertSheet(nombre);
