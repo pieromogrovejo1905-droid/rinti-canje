@@ -1,7 +1,7 @@
 {
   "name": "Canje Rinti · Registro",
   "short_name": "Canje Rinti",
-  "start_url": "./index.html",
+  "start_url": "./app.html",
   "display": "standalone",
   "background_color": "#f4f4f2",
   "theme_color": "#3b47e0",

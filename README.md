@@ -1,5 +1,6 @@
-> ## 👉 Abrir el dashboard: **[rinti.holafree.com/dashboard.html](https://rinti.holafree.com/dashboard.html)**
-> App de impulsadoras: **[rinti.holafree.com](https://rinti.holafree.com/)**
+> ## 👉 Ingreso único: **[rinti.holafree.com](https://rinti.holafree.com/)** (Promotores · Back Office · Equipo Rinti)
+> Dashboard del cliente: **[rinti.holafree.com/dashboard.html](https://rinti.holafree.com/dashboard.html)**
+> App de impulsadoras: **[rinti.holafree.com/app.html](https://rinti.holafree.com/app.html)**
 > Dashboard interno Free: **[rinti.holafree.com/interno.html](https://rinti.holafree.com/interno.html)** (usuarios de supervisor o coordinador)
 >
 > Esta página es solo el código. El dashboard se abre en el link de arriba, con usuario y contraseña.
@@ -22,7 +23,8 @@ Las reglas están en `SACOS_POR_MERCADO` (apps-script/Code.gs, que manda) y en `
 
 | Página | Para quién | Qué hace |
 |---|---|---|
-| `index.html` | Impulsadoras y supervisor (celular) | Asistencia con selfie y GPS, pedidos y canjes (código de vale, boleta, firma, foto), incidencias y cierre de pavos |
+| `index.html` | Todos | Inicio con 3 botones: Promotores, Back Office (interno Free) y Equipo Rinti (cliente) |
+| `app.html` | Impulsadoras y supervisor (celular) | Asistencia con selfie y GPS, pedidos y canjes (código de vale, boleta, firma, foto), incidencias y cierre de pavos |
 | `dashboard.html` | Cliente (Rinti), entra con usuario y contraseña | Avance en vivo contra la meta, por mercado e impulsadora, asistencia, cuadre de pavos, incidencias, galería de evidencias, CSV y PDF |
 | `apps-script/Code.gs` | Backend | Guarda todo en Google Sheets y las fotos en Google Drive |
 
