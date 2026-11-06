@@ -2,7 +2,7 @@
 window.RINTI = {
   // Pega aquí la URL de la app web de Apps Script (termina en /exec).
   // Vacío = modo demo: la app no envía nada y el dashboard muestra datos de ejemplo.
-  API_URL: '',
+  API_URL: 'https://script.google.com/macros/s/AKfycbyzZ3p1jaGIdczLAoohmkvxJ7APZyYR1fCotiblNzb0HV7-k80hrpcfCAUct8ullmUYuQ/exec',
 
   CAMPANA: 'Canje Rinti · Ricocan & Ricocat',
   SACOS_POR_VALE: 8,

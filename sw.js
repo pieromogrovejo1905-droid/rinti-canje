@@ -1,5 +1,5 @@
 // Guarda la app en el teléfono para que abra aunque no haya señal.
-const CACHE = 'rinti-v1';
+const CACHE = 'rinti-v2';
 const SHELL = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icon.svg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => {
