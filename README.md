@@ -1,3 +1,8 @@
+> ## 👉 Abrir el dashboard: **[pieromogrovejo1905-droid.github.io/rinti-canje/dashboard.html](https://pieromogrovejo1905-droid.github.io/rinti-canje/dashboard.html)**
+> App de impulsadoras: **[pieromogrovejo1905-droid.github.io/rinti-canje](https://pieromogrovejo1905-droid.github.io/rinti-canje/)**
+>
+> Esta página es solo el código. El dashboard se abre en el link de arriba, con usuario y contraseña.
+
 # Canje Rinti · Registro de campo y dashboard
 
 Sistema para la campaña **Canje Rinti (Ricocan / Ricocat)**: 9 impulsadoras en 8 mercados + Mercado Productores.
