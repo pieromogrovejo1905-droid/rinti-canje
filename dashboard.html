@@ -10,25 +10,40 @@
 <style>
   :root{
     color-scheme:light;
-    --accent:#b4122b; --accent-soft:#f6dde2;
-    --bg:#f5f5f3; --card:#fff; --ink:#1c1c1e; --ink2:#55565b; --muted:#86878c; --line:#e6e6e3; --grid:#ececea;
+    /* Identidad Free */
+    --accent:#3b47e0; --accent-soft:#eceefd; --navy:#0b1f4d; --green:#3f8a55;
+    --bg:#f3f4fb; --card:#fff; --ink:#0b1f4d; --ink2:#4a5275; --muted:#8a90ab; --line:#e1e4f3; --grid:#eceef8;
     --ok:#1d7a46; --ok-soft:#e6f4ec; --warn:#9a5800; --warn-soft:#fdf1df; --err:#b42318; --err-soft:#fdecea;
   }
   *{box-sizing:border-box}
   [hidden]{display:none!important}
   body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
-  header{background:#fff;border-bottom:1px solid var(--line);padding:14px 16px}
-  .hwrap{max-width:1280px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;justify-content:space-between}
-  .brand b{font-size:18px;display:block}
-  .brand span{color:var(--muted);font-size:13px}
-  .live{display:inline-flex;align-items:center;gap:8px;color:var(--ink2);font-size:13px}
-  .live i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(29,122,70,.5);animation:p 2s infinite}
+  header{background:var(--accent);color:#fff;padding:18px 16px 22px;position:relative;overflow:hidden}
+  header::before{content:"";position:absolute;right:-60px;top:-90px;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.08)}
+  header::after{content:"";position:absolute;right:220px;bottom:-26px;width:56px;height:56px;border-radius:50%;background:#7db843}
+  .hwrap{max-width:1280px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:14px 24px;justify-content:space-between;position:relative;z-index:1}
+  .brand{display:flex;align-items:center;gap:16px}
+  .brand .free{height:46px;display:block}
+  .brand .sep{width:1px;height:44px;background:rgba(255,255,255,.4)}
+  .brand .r{height:48px;width:48px;border-radius:12px;display:block}
+  .brand .tt{line-height:1.2}
+  .brand .kick{font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.85;font-weight:600}
+  .brand b{font-size:22px;display:block;font-weight:800;letter-spacing:-.01em}
+  .brand span{opacity:.85;font-size:13px}
+  .hright{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+  .marcas{display:flex;gap:8px}
+  .marcas img{height:30px;border-radius:7px;display:block}
+  .live{display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;background:rgba(255,255,255,.14);padding:5px 10px;border-radius:99px}
+  @media (max-width:640px){.hright{align-items:flex-start}.brand .free{height:36px}.brand .r{height:38px;width:38px}.brand b{font-size:18px}}
+  .foot{max-width:1280px;margin:0 auto;padding:4px 16px 32px;display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12.5px}
+  .foot img{height:30px}
+  .live i{width:8px;height:8px;border-radius:50%;background:#7db843;box-shadow:0 0 0 0 rgba(29,122,70,.5);animation:p 2s infinite}
   .live.off i{background:var(--muted);animation:none}
   @keyframes p{70%{box-shadow:0 0 0 8px rgba(29,122,70,0)}100%{box-shadow:0 0 0 0 rgba(29,122,70,0)}}
   .filters{max-width:1280px;margin:0 auto;padding:12px 16px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   .seg{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:10px;padding:3px;flex-wrap:wrap}
   .seg button{border:0;background:none;font:inherit;padding:7px 12px;border-radius:7px;color:var(--ink2);cursor:pointer}
-  .seg button.on{background:var(--ink);color:#fff}
+  .seg button.on{background:var(--accent);color:#fff}
   select,input[type=date],input[type=search]{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
   .sp{flex:1}
   .tbtn{font:inherit;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer;color:var(--ink)}
@@ -90,7 +105,7 @@
     .filters,.noprint,.live{display:none!important}
     .print-only{display:block}
     .card,.kpi{break-inside:avoid;border-color:#ccc}
-    header{border:0}
+    header{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .gal{grid-template-columns:repeat(4,1fr)}
   }
 </style>
@@ -99,8 +114,10 @@
 <div id="banner"></div>
 <header>
   <div class="hwrap">
-    <div class="brand"><b id="tCampana">Canje Rinti</b><span>Seguimiento de impulsadoras en mercados · Rinti × Free</span></div>
-    <div class="live" id="live"><i></i><span id="liveTxt">Cargando…</span></div>
+    <div class="brand"><img class="free" src="img/free-blanco.png" alt="Free Marketing"><span class="sep"></span><img class="r" src="img/rinti-r.png" alt="Rinti">
+      <div class="tt"><div class="kick">Rinti × Free</div><b id="tCampana">Canje Rinti</b><span>Seguimiento de impulsadoras en mercados</span></div></div>
+    <div class="hright"><div class="marcas"><img src="img/ricocan.png" alt="Ricocan"><img src="img/ricocat.png" alt="Ricocat"></div>
+      <div class="live" id="live"><i></i><span id="liveTxt">Cargando…</span></div></div>
   </div>
 </header>
 <div class="filters">
@@ -169,6 +186,7 @@
     <div class="tw"><table id="tDetalle"></table></div>
   </section>
 </main>
+<footer class="foot"><img src="img/free-azul.png" alt="Free Marketing"><span>Reporte elaborado por Free Marketing para Rinti · Canje Ricocan &amp; Ricocat</span></footer>
 
 <div class="modal" id="modal" hidden><div class="mbox" id="mbox"></div></div>
 
@@ -341,7 +359,7 @@ function graficoDia(P, dias, imp) {
     data: {
       labels: fechas.map(fCorta),
       datasets: [
-        { type: 'bar', label: 'Canjes', data: fechas.map(f => porDia[f]), backgroundColor: '#b4122b', hoverBackgroundColor: '#8f0e22', borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', maxBarThickness: 24, order: 2 },
+        { type: 'bar', label: 'Canjes', data: fechas.map(f => porDia[f]), backgroundColor: '#3b47e0', hoverBackgroundColor: '#2a34b8', borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', maxBarThickness: 24, order: 2 },
         { type: 'line', label: 'Meta', data: fechas.map(() => metaDia), borderColor: '#86878c', borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, pointHoverRadius: 0, order: 1 },
       ],
     },
@@ -358,7 +376,7 @@ function graficoHora(canjes) {
   canjes.forEach(p => { const h = parseInt(p.hora, 10); if (h in cnt) cnt[h]++; else if (h < 7) cnt[7]++; else if (h > 19) cnt[19]++; });
   chart('chHora', {
     type: 'bar',
-    data: { labels: horas.map(h => h + 'h'), datasets: [{ label: 'Canjes', data: horas.map(h => cnt[h]), backgroundColor: '#b4122b', hoverBackgroundColor: '#8f0e22', borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', maxBarThickness: 20 }] },
+    data: { labels: horas.map(h => h + 'h'), datasets: [{ label: 'Canjes', data: horas.map(h => cnt[h]), backgroundColor: '#3b47e0', hoverBackgroundColor: '#2a34b8', borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', maxBarThickness: 20 }] },
     options: { maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { ...tooltip, callbacks: { title: c => `${horas[c[0].dataIndex]}:00 – ${horas[c[0].dataIndex]}:59`, label: c => `Canjes: ${c.raw}` } } }, scales: ejes() },
   });
 }
