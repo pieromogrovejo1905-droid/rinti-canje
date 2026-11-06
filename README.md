@@ -1,6 +1,6 @@
-> ## 👉 Abrir el dashboard: **[pieromogrovejo1905-droid.github.io/rinti-canje/dashboard.html](https://pieromogrovejo1905-droid.github.io/rinti-canje/dashboard.html)**
-> App de impulsadoras: **[pieromogrovejo1905-droid.github.io/rinti-canje](https://pieromogrovejo1905-droid.github.io/rinti-canje/)**
-> Dashboard interno Free: **[pieromogrovejo1905-droid.github.io/rinti-canje/interno.html](https://pieromogrovejo1905-droid.github.io/rinti-canje/interno.html)** (usuarios de supervisor o coordinador)
+> ## 👉 Abrir el dashboard: **[rinti.holafree.com/dashboard.html](https://rinti.holafree.com/dashboard.html)**
+> App de impulsadoras: **[rinti.holafree.com](https://rinti.holafree.com/)**
+> Dashboard interno Free: **[rinti.holafree.com/interno.html](https://rinti.holafree.com/interno.html)** (usuarios de supervisor o coordinador)
 >
 > Esta página es solo el código. El dashboard se abre en el link de arriba, con usuario y contraseña.
 
