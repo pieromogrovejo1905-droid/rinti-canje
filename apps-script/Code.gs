@@ -8,31 +8,59 @@
  */
 
 const TZ = 'America/Lima';
-const SACOS_POR_VALE = 8;
 const KG = { ricocan: 22, ricocat: 15 };
 const P = PropertiesService.getScriptProperties();
+const VERSION_ESQUEMA = '2';
 
 const MERCADOS = [
   'Fiori', 'Unicachi Norte Mayorista', 'Unicachi Norte Minorista', 'Unicachi Sur',
   'Huamantanga', 'Ciudad de Dios', 'Parada', 'Caquetá', 'Mercado Productores',
 ];
 
+// Sacos (Ricocan y/o Ricocat, se pueden sumar) que el cliente debe comprar para recibir 1 vale.
+const SACOS_POR_MERCADO = {
+  'Mercado Productores': 25,
+  'Fiori': 17,
+  'Unicachi Sur': 12,
+  'Parada': 12,
+  'Unicachi Norte Mayorista': 10,
+  'Unicachi Norte Minorista': 5,
+  'Huamantanga': 5,
+  'Ciudad de Dios': 5,
+  'Caquetá': 5,
+};
+
+// Usuario de acceso de cada mercado (uno por impulsadora).
+const USUARIO_MERCADO = {
+  'Fiori': 'fiori',
+  'Unicachi Norte Mayorista': 'unicachi.mayorista',
+  'Unicachi Norte Minorista': 'unicachi.minorista',
+  'Unicachi Sur': 'unicachi.sur',
+  'Huamantanga': 'huamantanga',
+  'Ciudad de Dios': 'ciudaddedios',
+  'Parada': 'parada',
+  'Caquetá': 'caqueta',
+  'Mercado Productores': 'productores',
+};
+
 const ESQUEMA = {
   Asistencia: ['id', 'registrado', 'fecha', 'hora', 'impulsadora', 'mercado', 'marca', 'lat', 'lng', 'precision_m', 'foto'],
   Pedidos: ['id', 'registrado', 'fecha', 'hora', 'impulsadora', 'mercado', 'puesto', 'cliente', 'celular',
     'tipo_comprobante', 'n_comprobante', 'sacos_ricocan', 'sacos_ricocat', 'sacos_total', 'kg_total',
     'es_canje', 'vales', 'codigos_vale', 'foto_comprobante', 'foto_entrega', 'firma', 'compra_lima',
-    'consentimiento', 'cumple_mecanica', 'alertas', 'observaciones', 'validacion', 'lat', 'lng'],
+    'consentimiento', 'cumple_mecanica', 'alertas', 'observaciones', 'validacion', 'lat', 'lng',
+    'dni', 'sacos_requeridos'],
   Incidencias: ['id', 'registrado', 'fecha', 'hora', 'impulsadora', 'mercado', 'tipo_incidencia', 'detalle', 'foto', 'lat', 'lng'],
   Cierres: ['id', 'registrado', 'fecha', 'hora', 'supervisor', 'mercado', 'pavos_inicio', 'pavos_entregados',
     'pavos_saldo', 'vales_reportados', 'observaciones'],
   Vales: ['codigo', 'pedido_id', 'fecha', 'impulsadora', 'mercado'],
-  Equipo: ['nombre', 'pin', 'rol', 'mercado', 'activo'],
+  Equipo: ['nombre', 'pin', 'rol', 'mercado', 'activo', 'usuario', 'contrasena'],
   Config: ['clave', 'valor', 'nota'],
 };
 
 // Columnas que se guardan como texto (para que Sheets no las convierta en fecha/número).
-const COLUMNAS_TEXTO = ['id', 'fecha', 'hora', 'celular', 'n_comprobante', 'codigos_vale', 'codigo', 'pedido_id', 'pin', 'valor'];
+const COLUMNAS_TEXTO = ['id', 'fecha', 'hora', 'celular', 'n_comprobante', 'codigos_vale', 'codigo', 'pedido_id', 'pin', 'valor',
+  'dni', 'usuario', 'contrasena'];
 
 /* ------------------------------------------------------------------ */
 /* Instalación                                                         */
@@ -80,10 +108,10 @@ function setup() {
   const eq = ss.getSheetByName('Equipo');
   if (eq.getLastRow() < 2) {
     const filas = MERCADOS.map(function (m, i) {
-      return ['Impulsadora ' + (i + 1), pinAleatorio_(), 'impulsadora', m, 'SI'];
+      return ['Impulsadora ' + (i + 1), pinAleatorio_(), 'impulsadora', m, 'SI', USUARIO_MERCADO[m], claveAleatoria_()];
     });
-    filas.push(['Supervisor 1', pinAleatorio_(), 'supervisor', '', 'SI']);
-    eq.getRange(2, 1, filas.length, 5).setValues(filas);
+    filas.push(['Supervisor 1', pinAleatorio_(), 'supervisor', '', 'SI', 'supervisor', claveAleatoria_()]);
+    eq.getRange(2, 1, filas.length, 7).setValues(filas);
   }
 
   if (!P.getProperty('FOLDER_ID')) {
@@ -102,7 +130,8 @@ function setup() {
 function verAccesos() {
   Logger.log('Google Sheet: ' + ss_().getUrl());
   Logger.log('Carpeta de fotos: https://drive.google.com/drive/folders/' + P.getProperty('FOLDER_ID'));
-  Logger.log('Usuarios y contraseñas: pestaña Config del Google Sheet (app_usuario, app_clave, cliente_usuario, cliente_clave)');
+  Logger.log('Accesos de impulsadoras (uno por mercado): pestaña Equipo, columnas usuario y contrasena');
+  Logger.log('Acceso del cliente al dashboard: pestaña Config, filas cliente_usuario y cliente_clave');
   Logger.log('Token del dashboard (k): ' + P.getProperty('DASH_TOKEN'));
   Logger.log('Link del cliente: https://TU-USUARIO.github.io/rinti-canje/dashboard.html?k=' + P.getProperty('DASH_TOKEN'));
 }
@@ -120,9 +149,9 @@ function renovarTokenDashboard() {
 function doGet(e) {
   const accion = String((e && e.parameter && e.parameter.action) || '').toLowerCase();
   try {
+    asegurarAccesos_();
     if (accion === 'config') {
-      asegurarAccesos_();
-      return out_({ ok: true, equipo: equipoPublico_(), config: configPublica_() });
+      return out_({ ok: true, equipo: equipoPublico_(), config: configPublica_(), sacos_por_mercado: SACOS_POR_MERCADO });
     }
     if (accion === 'data') {
       if (!e.parameter.k || e.parameter.k !== P.getProperty('DASH_TOKEN')) {
@@ -130,12 +159,14 @@ function doGet(e) {
       }
       const pedidos = leer_('Pedidos').map(function (p) {
         delete p.celular; delete p.consentimiento; // el cliente (Rinti) no ve datos de contacto
+        p.dni = p.dni ? '•••••' + String(p.dni).slice(-3) : ''; // DNI enmascarado
         return p;
       });
       return out_({
         ok: true,
         generado: ahora_(),
         config: configPublica_(),
+        sacos_por_mercado: SACOS_POR_MERCADO,
         equipo: equipoPublico_(),
         asistencia: leer_('Asistencia'),
         pedidos: pedidos,
@@ -158,13 +189,14 @@ function doPost(e) {
     asegurarAccesos_();
     if (b.tipo === 'login_cliente') {
       const c = config_();
-      const ok = limpio_(b.usuario).toLowerCase() === String(c.cliente_usuario || '').toLowerCase()
-        && String(b.clave || '') === String(c.cliente_clave || '');
+      const ok = limpio_(b.usuario).toLowerCase() === limpio_(c.cliente_usuario).toLowerCase()
+        && limpio_(b.clave) !== '' && limpio_(b.clave) === limpio_(c.cliente_clave);
       return out_(ok ? { ok: true, k: P.getProperty('DASH_TOKEN') } : { ok: false, code: 'auth', error: 'Usuario o contraseña incorrectos' });
     }
     const u = auth_(b);
-    if (!u) return out_({ ok: false, code: 'auth', error: 'Usuario, contraseña o nombre incorrectos' });
+    if (!u) return out_({ ok: false, code: 'auth', error: 'Usuario o contraseña incorrectos' });
     if (b.tipo === 'login') return out_({ ok: true, usuario: u });
+    if (b.tipo === 'verificar_dni') return out_(verificarDni_(b, u));
     const fn = { asistencia: asistencia_, pedido: pedido_, incidencia: incidencia_, cierre: cierre_ }[b.tipo];
     if (!fn) return out_({ ok: false, code: 'val', error: 'Tipo de registro desconocido' });
     if (!b.id) return out_({ ok: false, code: 'val', error: 'Falta el id del registro' });
@@ -178,9 +210,16 @@ function doPost(e) {
 /* Registros                                                           */
 /* ------------------------------------------------------------------ */
 
+/** La impulsadora siempre registra en su mercado; el supervisor elige uno de la lista. */
+function mercadoDe_(b, u) {
+  const m = u.rol === 'supervisor' ? limpio_(b.mercado) : limpio_(u.mercado);
+  if (!SACOS_POR_MERCADO[m]) throw val_('Mercado no válido: ' + (m || '(vacío)'));
+  return m;
+}
+
 function asistencia_(b, u) {
   if (existeId_('Asistencia', b.id)) return { ok: true, duplicado: true };
-  if (!limpio_(b.mercado)) throw val_('Falta el mercado');
+  b.mercado = mercadoDe_(b, u);
   if (['Entrada', 'Salida'].indexOf(b.marca) < 0) throw val_('Marca inválida');
   if (!b.foto) throw val_('Falta la selfie');
 
@@ -203,21 +242,27 @@ function pedido_(b, u) {
   if (existeId_('Pedidos', b.id)) return { ok: true, duplicado: true };
 
   const rc = entero_(b.ricocan), rt = entero_(b.ricocat), total = rc + rt;
-  const mercado = limpio_(b.mercado);
-  if (!mercado) throw val_('Falta el mercado');
+  const mercado = mercadoDe_(b, u);
   if (total <= 0) throw val_('Indica la cantidad de sacos');
   if (!limpio_(b.cliente)) throw val_('Falta el nombre del cliente o negocio');
   if (/productores/i.test(mercado) && !limpio_(b.puesto)) throw val_('Elige el puesto de Mercado Productores');
 
-  const vales = Math.floor(total / SACOS_POR_VALE);
-  const esCanje = vales > 0;
+  // Regla: en cada mercado se piden N sacos (Ricocan y/o Ricocat) y se da como máximo 1 vale por DNI al día.
+  const requeridos = SACOS_POR_MERCADO[mercado];
+  const esCanje = total >= requeridos;
+  const vales = esCanje ? 1 : 0;
   const codigos = (b.codigos || []).map(normCodigo_).filter(String);
   const nComp = limpio_(b.n_comprobante);
+  const dni = normDni_(b.dni);
   const alertas = [];
+  const t = cuando_(b.capturado);
 
+  if (dni && !dniValido_(dni)) throw val_('El DNI debe tener 8 dígitos (o carné de extranjería de 9 a 12 caracteres)');
   if (esCanje) {
-    if (codigos.length !== vales) throw val_('Ingresa ' + vales + ' código(s) de vale');
-    if (new Set(codigos).size !== codigos.length) throw val_('Hay códigos de vale repetidos');
+    if (!dni) throw val_('Falta el DNI del cliente');
+    const previo = dniUsadoHoy_(dni, t.fecha);
+    if (previo) throw val_('Este DNI ya recibió un vale hoy (' + previo.mercado + ', ' + previo.hora + '). Máximo 1 vale por DNI al día.');
+    if (codigos.length !== 1) throw val_('Ingresa el código del vale');
     if (!nComp) throw val_('Falta el número de boleta o factura');
     if (!b.foto_comprobante) throw val_('Falta la foto de la boleta o factura');
     if (!b.firma) throw val_('Falta la firma del cliente');
@@ -226,11 +271,10 @@ function pedido_(b, u) {
     const usados = codigos.filter(valeUsado_);
     if (usados.length) throw val_('Vale ya registrado antes: ' + usados.join(', '));
   }
-  if (limpio_(b.celular) && !b.consentimiento) throw val_('Falta el consentimiento del cliente para guardar su celular');
+  if ((limpio_(b.celular) || dni) && !b.consentimiento) throw val_('Falta el consentimiento del cliente para guardar sus datos');
   if (nComp && comprobanteUsado_(nComp)) alertas.push('Comprobante repetido');
   if (!b.lat) alertas.push('Sin GPS');
 
-  const t = cuando_(b.capturado);
   const base = t.fecha + '_' + t.hora.replace(':', '') + '_' + u.nombre;
   const subidas = [];
   const fotoComp = foto_(b.foto_comprobante, base + '_comprobante', t.fecha, subidas);
@@ -241,6 +285,8 @@ function pedido_(b, u) {
     if (existeId_('Pedidos', b.id)) { borrar_(subidas); return { ok: true, duplicado: true }; }
     const usados = codigos.filter(valeUsado_);
     if (usados.length) { borrar_(subidas); throw val_('Vale ya registrado antes: ' + usados.join(', ')); }
+    const previo = esCanje && dniUsadoHoy_(dni, t.fecha);
+    if (previo) { borrar_(subidas); throw val_('Este DNI ya recibió un vale hoy (' + previo.mercado + ', ' + previo.hora + '). Máximo 1 vale por DNI al día.'); }
 
     agregar_('Pedidos', {
       id: b.id, registrado: ahora_(), fecha: t.fecha, hora: t.hora, impulsadora: u.nombre, mercado: mercado,
@@ -253,6 +299,7 @@ function pedido_(b, u) {
       cumple_mecanica: !esCanje ? 'N/A' : (alertas.indexOf('Comprobante repetido') >= 0 ? 'REVISAR' : 'SÍ'),
       alertas: alertas.join(', '), observaciones: limpio_(b.observaciones),
       validacion: esCanje ? 'Pendiente' : '', lat: num_(b.lat), lng: num_(b.lng),
+      dni: dni, sacos_requeridos: requeridos,
     });
     codigos.forEach(function (c) {
       agregar_('Vales', { codigo: c, pedido_id: b.id, fecha: t.fecha, impulsadora: u.nombre, mercado: mercado });
@@ -261,9 +308,27 @@ function pedido_(b, u) {
   });
 }
 
+/** Consulta si un DNI ya recibió vale hoy (antes de entregar el vale físico). */
+function verificarDni_(b, u) {
+  const dni = normDni_(b.dni);
+  if (!dniValido_(dni)) return { ok: false, code: 'val', error: 'DNI inválido' };
+  const previo = dniUsadoHoy_(dni, cuando_().fecha);
+  return previo
+    ? { ok: true, disponible: false, mensaje: 'Ya recibió un vale hoy en ' + previo.mercado + ' a las ' + previo.hora }
+    : { ok: true, disponible: true, mensaje: 'Puede recibir su vale hoy' };
+}
+
+function normDni_(s) { return limpio_(s).toUpperCase().replace(/[\s.-]+/g, ''); }
+function dniValido_(d) { return /^\d{8}$/.test(d) || /^[A-Z0-9]{9,12}$/.test(d); }
+
+function dniUsadoHoy_(dni, fecha) {
+  if (!dni) return null;
+  return leer_('Pedidos').find(function (p) { return p.dni === dni && p.fecha === fecha && p.es_canje === 'SÍ'; }) || null;
+}
+
 function incidencia_(b, u) {
   if (existeId_('Incidencias', b.id)) return { ok: true, duplicado: true };
-  if (!limpio_(b.mercado)) throw val_('Falta el mercado');
+  b.mercado = mercadoDe_(b, u);
   if (!limpio_(b.tipo_incidencia)) throw val_('Elige el tipo de incidencia');
   if (!limpio_(b.detalle)) throw val_('Describe la incidencia');
 
@@ -284,7 +349,7 @@ function incidencia_(b, u) {
 function cierre_(b, u) {
   if (u.rol !== 'supervisor') throw val_('Solo el supervisor puede enviar el cierre');
   if (existeId_('Cierres', b.id)) return { ok: true, duplicado: true };
-  if (!limpio_(b.mercado)) throw val_('Falta el mercado');
+  b.mercado = mercadoDe_(b, u);
   const ini = entero_(b.pavos_inicio), ent = entero_(b.pavos_entregados);
   if (ent > ini) throw val_('Los pavos entregados no pueden ser más que los del inicio');
   const t = cuando_(b.capturado);
@@ -335,39 +400,56 @@ function existeId_(nombre, id) { return buscarEnColumna_(nombre, 'id', id); }
 function valeUsado_(codigo) { return buscarEnColumna_('Vales', 'codigo', codigo); }
 function comprobanteUsado_(n) { return buscarEnColumna_('Pedidos', 'n_comprobante', n); }
 
-/**
- * Acceso a la app de campo: usuario y contraseña generales (hoja Config) + nombre de la promotora.
- * También acepta el PIN individual de la hoja Equipo, para cuando se pase a accesos individuales.
- */
+/** Acceso a la app de campo: un usuario y contraseña por mercado (hoja Equipo, columnas usuario y contrasena). */
 function auth_(b) {
-  if (!b.nombre) return null;
-  const r = leer_('Equipo').find(function (x) { return x.nombre === b.nombre && !/^no$/i.test(x.activo); });
-  if (!r) return null;
-  const c = config_();
-  const okGeneral = !!(b.usuario && b.clave && c.app_usuario && c.app_clave
-    && limpio_(b.usuario).toLowerCase() === String(c.app_usuario).toLowerCase() && String(b.clave) === String(c.app_clave));
-  const okPin = !!(b.pin && r.pin && String(r.pin).trim() === String(b.pin).trim());
-  if (!okGeneral && !okPin) return null;
-  return { nombre: r.nombre, rol: String(r.rol || 'impulsadora').toLowerCase(), mercado: r.mercado };
+  const usuario = limpio_(b.usuario).toLowerCase(), clave = limpio_(b.clave);
+  if (!usuario || !clave) return null;
+  const r = leer_('Equipo').find(function (x) {
+    return limpio_(x.usuario).toLowerCase() === usuario && limpio_(x.contrasena) === clave && !/^no$/i.test(x.activo);
+  });
+  return r ? { nombre: r.nombre, rol: String(r.rol || 'impulsadora').toLowerCase(), mercado: r.mercado, usuario: r.usuario } : null;
 }
 
-/** Crea en la hoja Config los usuarios y contraseñas generales si aún no existen. */
+/**
+ * Deja la hoja lista para la versión actual: agrega columnas nuevas al final (sin mover datos),
+ * crea los accesos por mercado en Equipo y el acceso del cliente en Config.
+ */
 function asegurarAccesos_() {
-  const faltan = function () {
-    const c = config_();
-    const f = [];
-    if (!c.app_usuario) f.push(['app_usuario', 'promotoras', 'Usuario general de la app de campo']);
-    if (!c.app_clave) f.push(['app_clave', claveAleatoria_(), 'Contraseña general de la app de campo (puedes cambiarla aquí)']);
-    if (!c.cliente_usuario) f.push(['cliente_usuario', 'rinti', 'Usuario del dashboard del cliente']);
-    if (!c.cliente_clave) f.push(['cliente_clave', claveAleatoria_(), 'Contraseña del dashboard del cliente (puedes cambiarla aquí)']);
-    return f;
-  };
-  if (!faltan().length) return;
+  if (P.getProperty('ESQUEMA') === VERSION_ESQUEMA && config_().cliente_clave) return;
   conLock_(function () {
-    const f = faltan();
-    if (!f.length) return;
-    const sh = hoja_('Config');
-    sh.getRange(sh.getLastRow() + 1, 1, f.length, 3).setValues(f);
+    ['Pedidos', 'Equipo'].forEach(function (nombre) {
+      const sh = hoja_(nombre), cols = ESQUEMA[nombre];
+      const actual = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getDisplayValues()[0];
+      const esPrefijo = actual.every(function (h, i) { return h === '' || h === cols[i]; });
+      if (!esPrefijo) throw new Error('Las columnas de la hoja ' + nombre + ' no coinciden con el sistema');
+      if (actual.length < cols.length || actual[cols.length - 1] !== cols[cols.length - 1]) {
+        sh.getRange(1, 1, 1, cols.length).setValues([cols]).setFontWeight('bold').setBackground('#1f2937').setFontColor('#ffffff');
+      }
+      cols.forEach(function (c, i) {
+        if (COLUMNAS_TEXTO.indexOf(c) >= 0) sh.getRange(1, i + 1, sh.getMaxRows(), 1).setNumberFormat('@');
+      });
+    });
+
+    // Usuario y contraseña para cada fila del equipo que no tenga
+    const eq = hoja_('Equipo');
+    if (eq.getLastRow() > 1) {
+      const cols = ESQUEMA.Equipo, iU = cols.indexOf('usuario'), iC = cols.indexOf('contrasena');
+      const filas = eq.getRange(2, 1, eq.getLastRow() - 1, cols.length).getDisplayValues();
+      let sup = 0;
+      filas.forEach(function (f, n) {
+        if (!f[0]) return;
+        const esSup = /supervisor/i.test(f[2]);
+        if (esSup) sup++;
+        if (!limpio_(f[iU])) eq.getRange(n + 2, iU + 1).setValue(esSup ? 'supervisor' + (sup > 1 ? sup : '') : (USUARIO_MERCADO[f[3]] || claveAleatoria_()));
+        if (!limpio_(f[iC])) eq.getRange(n + 2, iC + 1).setValue(claveAleatoria_());
+      });
+    }
+
+    const c = config_(), falt = [];
+    if (!c.cliente_usuario) falt.push(['cliente_usuario', 'rinti', 'Usuario del dashboard del cliente']);
+    if (!c.cliente_clave) falt.push(['cliente_clave', claveAleatoria_(), 'Contraseña del dashboard del cliente (puedes cambiarla aquí)']);
+    if (falt.length) { const sh = hoja_('Config'); sh.getRange(sh.getLastRow() + 1, 1, falt.length, 3).setValues(falt); }
+    P.setProperty('ESQUEMA', VERSION_ESQUEMA);
   });
 }
 

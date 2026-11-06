@@ -20,7 +20,7 @@
   body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
   header{background:var(--accent);color:#fff;padding:18px 16px 22px;position:relative;overflow:hidden}
   header::before{content:"";position:absolute;right:-60px;top:-90px;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.08)}
-  header::after{content:"";position:absolute;right:220px;bottom:-26px;width:56px;height:56px;border-radius:50%;background:#7db843}
+  header::after{content:"";position:absolute;left:46%;bottom:-30px;width:56px;height:56px;border-radius:50%;background:#7db843}
   .hwrap{max-width:1280px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:14px 24px;justify-content:space-between;position:relative;z-index:1}
   .brand{display:flex;align-items:center;gap:16px}
   .brand .free{height:46px;display:block}
@@ -303,6 +303,7 @@ function normalizar() {
   D.meta = num(cfg.meta_diaria_por_impulsadora) || C.META_DIARIA;
   D.plan = num(cfg.impulsadoras_planificadas) || C.IMPULSADORAS_PLANIFICADAS;
   D.horaIngreso = cfg.hora_ingreso || '09:00';
+  D.reglas = Object.assign({}, C.SACOS_POR_MERCADO, D.sacos_por_mercado || {});
   D.inicio = cfg.fecha_inicio || '';
   D.fin = cfg.fecha_fin || '';
   D.pedidos.forEach(p => {
@@ -370,8 +371,8 @@ function pintar() {
 
   $('#kpis').innerHTML = [
     kpi('Canjes realizados', fmt(canjes.length), `/ ${fmt(meta)}`, `${pct(canjes.length, meta)}% de la meta (${D.meta} por impulsadora al día)`, pct(canjes.length, meta)),
-    kpi('Vales entregados', fmt(vales), '', `1 vale = 1 pavo Redondos de 7 kg`),
-    kpi('Pedidos generados', fmt(P.length), '', `${pct(canjes.length, P.length)}% llegaron al canje (8+ sacos)`),
+    kpi('Vales entregados', fmt(vales), '', `1 vale = 1 pavo Redondos de 7 kg · máx. 1 por DNI al día`),
+    kpi('Pedidos generados', fmt(P.length), '', `${pct(canjes.length, P.length)}% llegaron a los sacos del canje`),
     kpi('Sacos comprados', fmt(rc + rt), '', `Ricocan ${fmt(rc)} · Ricocat ${fmt(rt)} · ${fmt(kg)} kg`),
     kpi('Cumplimiento de mecánica', canjes.length ? pct(cumple, canjes.length) + '%' : '—', '', `${fmt(cumple)} de ${fmt(canjes.length)} canjes con boleta, registro, firma y foto${obs ? ` · ${obs} observados` : ''}`, canjes.length ? pct(cumple, canjes.length) : null),
     kpi('Asistencia', esperadas ? pct(jornadas, esperadas) + '%' : '—', '', `${fmt(jornadas)} de ${fmt(esperadas)} jornadas · ${tard} tardanza${tard === 1 ? '' : 's'}`, pct(jornadas, esperadas)),
@@ -486,14 +487,15 @@ function tablaMercado(P, A, I, dias) {
   });
   function fila(m, nombres, r, foot) {
     const p = pct(r.cj, r.meta);
+    const req = D.reglas[m];
     return `<tr><td><b>${esc(m)}</b>${nombres ? `<div style="color:var(--muted);font-size:12px">${esc(nombres)}</div>` : ''}</td>
-      <td class="n">${r.jor} / ${r.esp}</td><td class="n">${fmt(r.ped)}</td><td class="n">${fmt(r.rc)}</td><td class="n">${fmt(r.rt)}</td>
+      <td class="n">${req ? req : ''}</td><td class="n">${r.jor} / ${r.esp}</td><td class="n">${fmt(r.ped)}</td><td class="n">${fmt(r.rc)}</td><td class="n">${fmt(r.rt)}</td>
       <td class="n"><b>${fmt(r.cj)}</b></td><td class="n">${fmt(r.v)}</td><td class="n">${fmt(r.meta)}</td>
       <td class="n"><div class="mini"><span>${p}%</span><span class="b"><i style="width:${Math.min(100, p)}%"></i></span></div></td>
       <td class="n">${r.inc || '<span style="color:var(--muted)">0</span>'}</td></tr>`;
   }
   $('#subMercado').textContent = `Meta: ${D.meta} canjes por impulsadora × ${dias.length} día${dias.length > 1 ? 's' : ''} de operación`;
-  $('#tMercado').innerHTML = `<thead><tr><th>Mercado</th><th class="n">Asistencia</th><th class="n">Pedidos</th><th class="n">Sacos Ricocan</th><th class="n">Sacos Ricocat</th><th class="n">Canjes</th><th class="n">Vales</th><th class="n">Meta</th><th class="n">Avance</th><th class="n">Incid.</th></tr></thead>
+  $('#tMercado').innerHTML = `<thead><tr><th>Mercado</th><th class="n" title="Sacos Ricocan y/o Ricocat para 1 vale">Sacos x vale</th><th class="n">Asistencia</th><th class="n">Pedidos</th><th class="n">Sacos Ricocan</th><th class="n">Sacos Ricocat</th><th class="n">Canjes</th><th class="n">Vales</th><th class="n">Meta</th><th class="n">Avance</th><th class="n">Incid.</th></tr></thead>
     <tbody>${rows.join('')}</tbody>${mercados.length > 1 ? `<tfoot>${fila('Total', '', tot)}</tfoot>` : ''}`;
 }
 function tablaCuadre(CI) {
@@ -529,11 +531,11 @@ function tablaDetalle(P) {
   const rows = P.filter(p => !q || [p.codigos_vale, p.cliente, p.n_comprobante, p.impulsadora, p.puesto, p.mercado].join(' ').toLowerCase().includes(q))
     .sort((a, b) => (b.fecha + b.hora).localeCompare(a.fecha + a.hora));
   const est = p => !p._canje ? '<span class="st na">Pedido</span>' : p.validacion === 'Observado' ? '<span class="st err">✕ Observado</span>' : p._cumple ? (p.validacion === 'Válido' ? '<span class="st ok">✔ Validado</span>' : '<span class="st ok">✔ Cumple</span>') : '<span class="st warn">● Revisar</span>';
-  $('#tDetalle').innerHTML = `<thead><tr><th>Fecha</th><th>Hora</th><th>Mercado</th><th>Impulsadora</th><th>Cliente</th><th>Comprobante</th><th class="n">Ricocan</th><th class="n">Ricocat</th><th class="n">Vales</th><th>Código vale</th><th>Estado</th></tr></thead>
+  $('#tDetalle').innerHTML = `<thead><tr><th>Fecha</th><th>Hora</th><th>Mercado</th><th>Impulsadora</th><th>Cliente</th><th>DNI</th><th>Comprobante</th><th class="n">Ricocan</th><th class="n">Ricocat</th><th class="n">Vales</th><th>Código vale</th><th>Estado</th></tr></thead>
     <tbody>${rows.slice(0, 300).map(p => `<tr${p._canje ? ` data-id="${esc(p.id)}" style="cursor:pointer"` : ''}><td>${fCorta(p.fecha)}</td><td>${esc(p.hora)}</td><td>${esc(p.mercado)}</td><td>${esc(p.impulsadora)}</td>
-      <td>${esc(p.cliente)}${p.puesto ? `<div style="color:var(--muted);font-size:12px">${esc(p.puesto)}</div>` : ''}</td><td>${esc(p.tipo_comprobante)} ${esc(p.n_comprobante)}</td>
+      <td>${esc(p.cliente)}${p.puesto ? `<div style="color:var(--muted);font-size:12px">${esc(p.puesto)}</div>` : ''}</td><td>${esc(p.dni || '')}</td><td>${esc(p.tipo_comprobante)} ${esc(p.n_comprobante)}</td>
       <td class="n">${p._rc}</td><td class="n">${p._rt}</td><td class="n">${p._vales || ''}</td><td><b>${esc(p.codigos_vale)}</b></td><td>${est(p)}</td></tr>`).join('')
-      || '<tr><td colspan="11" class="empty">Sin registros</td></tr>'}</tbody>`
+      || '<tr><td colspan="12" class="empty">Sin registros</td></tr>'}</tbody>`
     + (rows.length > 300 ? `<caption style="caption-side:bottom;color:var(--muted);padding:8px">Mostrando 300 de ${rows.length}. Descarga el CSV para ver todo.</caption>` : '');
 }
 
@@ -543,7 +545,8 @@ function abrir(id) {
   const img = (u, t) => u ? `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(thumb(u, 800))}" alt="${t}"><span>${t}</span></a>` : '';
   $('#mbox').innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;align-items:start"><div><h2 style="margin:0">Canje · vale ${esc(p.codigos_vale)}</h2>
     <div style="color:var(--muted)">${esc(p.mercado)} · ${esc(p.impulsadora)} · ${fCorta(p.fecha)} ${esc(p.hora)}</div></div><button class="tbtn" id="mClose">Cerrar</button></div>
-    <dl class="kv" style="margin-top:14px"><dt>Cliente</dt><dd>${esc(p.cliente)}${p.puesto ? ' · ' + esc(p.puesto) : ''}</dd>
+    <dl class="kv" style="margin-top:14px"><dt>Cliente</dt><dd>${esc(p.cliente)}${p.puesto ? ' · ' + esc(p.puesto) : ''}</dd>${p.dni ? `<dt>DNI</dt><dd>${esc(p.dni)}</dd>` : ''}
+    <dt>Sacos pedidos en el mercado</dt><dd>${esc(p.sacos_requeridos || D.reglas[p.mercado] || '')}</dd>
     <dt>Comprobante</dt><dd>${esc(p.tipo_comprobante)} ${esc(p.n_comprobante)}</dd>
     <dt>Sacos</dt><dd>Ricocan 22 kg: ${p._rc} · Ricocat 15 kg: ${p._rt} · ${fmt(p._kg)} kg</dd>
     <dt>Vales</dt><dd>${p._vales}</dd><dt>Compra en Lima</dt><dd>${esc(p.compra_lima)}</dd>
@@ -572,7 +575,7 @@ $('#fBuscar').oninput = e => { F.buscar = e.target.value; tablaDetalle(filtrar(D
 $('#btnMas').onclick = () => { galN += 24; galeria(filtrar(D.pedidos).filter(p => p._canje)); };
 $('#btnPrint').onclick = () => window.print();
 $('#btnCsv').onclick = () => {
-  const cols = ['fecha', 'hora', 'mercado', 'impulsadora', 'puesto', 'cliente', 'tipo_comprobante', 'n_comprobante', 'sacos_ricocan', 'sacos_ricocat', 'sacos_total', 'kg_total', 'es_canje', 'vales', 'codigos_vale', 'cumple_mecanica', 'validacion', 'alertas', 'observaciones', 'foto_entrega', 'foto_comprobante', 'firma'];
+  const cols = ['fecha', 'hora', 'mercado', 'impulsadora', 'puesto', 'cliente', 'dni', 'tipo_comprobante', 'n_comprobante', 'sacos_requeridos', 'sacos_ricocan', 'sacos_ricocat', 'sacos_total', 'kg_total', 'es_canje', 'vales', 'codigos_vale', 'cumple_mecanica', 'validacion', 'alertas', 'observaciones', 'foto_entrega', 'foto_comprobante', 'firma'];
   const q = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
   const csv = '﻿' + [cols.join(';'), ...filtrar(D.pedidos).map(p => cols.map(c => q(c === 'kg_total' ? p._kg : p[c])).join(';'))].join('\r\n');
   const [a, b] = rango();
@@ -605,9 +608,10 @@ function demo() {
       let vDia = 0;
       for (let k = 0; k < nped; k++) {
         const hh = 9 + Math.floor(rnd() * 9); if (hh > limiteH) continue;
-        const canje = rnd() < 0.68;
-        const rc = canje ? pick([8, 8, 8, 6, 5, 4, 16]) : Math.floor(rnd() * 5) + 1, rt = canje ? (rc >= 8 ? 0 : 8 - rc) : Math.floor(rnd() * 3);
-        const vales = Math.floor((rc + rt) / 8);
+        const canje = rnd() < 0.68, req = C.SACOS_POR_MERCADO[e.mercado] || 5;
+        const tot = canje ? req + Math.floor(rnd() * 4) : Math.max(1, Math.floor(rnd() * req));
+        const rc = Math.round(tot * (0.4 + rnd() * 0.6)), rt = tot - rc;
+        const vales = tot >= req ? 1 : 0;
         const cod = Array.from({ length: vales }, () => 'RT-' + vale++);
         const obs = canje && rnd() < 0.05;
         pedidos.push({
@@ -615,6 +619,7 @@ function demo() {
           puesto: /Productores/.test(e.mercado) ? pick(C.PUESTOS_PRODUCTORES).split(' · ')[0] : 'Pto. ' + Math.floor(rnd() * 300),
           cliente: pick(['Bodega Rosita', 'Comercial Ayala', 'Distribuidora Paola', 'Market El Sol', 'Veterinaria Max', 'Inversiones Luz', 'Agro Pet Lima', 'Comercial Huanca']),
           tipo_comprobante: pick(['Boleta', 'Factura']), n_comprobante: 'B001-' + (20000 + n), sacos_ricocan: rc, sacos_ricocat: rt,
+          dni: vales ? '•••••' + String(100 + Math.floor(rnd() * 900)) : '', sacos_requeridos: req,
           es_canje: vales ? 'SÍ' : 'NO', compra_lima: vales ? 'SÍ' : '', vales, codigos_vale: cod.join(', '), cumple_mecanica: vales ? (rnd() < 0.03 ? 'REVISAR' : 'SÍ') : 'N/A',
           alertas: '', validacion: vales ? (obs ? 'Observado' : d > 1 ? 'Válido' : 'Pendiente') : '', observaciones: obs ? 'Boleta ilegible, se pidió nueva foto' : '',
           foto_entrega: vales ? ph('Entrega vale ' + cod[0], pick(['#7a1222', '#8a3b12', '#3d4a5c', '#5b3a6b'])) : '', foto_comprobante: vales ? ph('Boleta', '#55565b') : '', firma: vales ? ph('Firma', '#86878c') : '',

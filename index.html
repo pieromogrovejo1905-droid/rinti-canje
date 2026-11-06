@@ -47,6 +47,9 @@
   .eq div{border-radius:12px;padding:10px;text-align:center;font-size:13px;line-height:1.2}
   .eq b{display:block;font-size:22px}
   .eq .s{background:var(--accent-soft);color:var(--accent)} .eq .v{background:var(--green);color:#fff} .eq span{font-size:22px;font-weight:800;color:var(--accent)}
+  .dni-estado{margin-top:8px;padding:10px 12px;border-radius:10px;font-size:14.5px;font-weight:600}
+  .dni-estado.ok{background:var(--ok-soft);color:var(--ok)} .dni-estado.err{background:var(--err-soft);color:var(--err)} .dni-estado.info{background:#eef0f7;color:var(--ink2)}
+  select:disabled{background:#f3f4fb;color:var(--ink);opacity:1}
   .vale-box{margin-top:16px;padding:14px;border-radius:12px;background:var(--green-soft);border:1px solid #cfe6d5}
   .vale-box label.f{margin-top:0;color:#1f5a33}
   .vale-box .muted{margin-top:8px;color:#4c7a5a}
@@ -141,7 +144,7 @@
     <div class="hero">
       <div class="logos"><img class="free" src="img/free-blanco.png" alt="Free Marketing"><span class="sep"></span><img class="r" src="img/rinti-r.png" alt="Rinti"></div>
       <h1>Canje Rinti</h1>
-      <p>Compra 8 sacos y el cliente se lleva un pavo.</p>
+      <p>Compra los sacos de la promo y el cliente se lleva un pavo.</p>
       <div class="marcas"><img src="img/ricocan.png" alt="Ricocan"><img src="img/ricocat.png" alt="Ricocat"></div>
     </div>
     <div class="card">
@@ -150,24 +153,22 @@
       <input id="lUsuario" type="text" autocapitalize="none" autocorrect="off" autocomplete="username" spellcheck="false">
       <label class="f" for="lClave">Contraseña</label>
       <input id="lClave" type="password" autocomplete="current-password">
-      <label class="f" for="lNombre">Tu nombre</label>
-      <select id="lNombre"><option value="">Cargando…</option></select>
       <div id="lErr" class="err-box" hidden></div>
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
-    <p class="muted">El usuario y la contraseña te los da tu supervisor.</p>
+    <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
   </section>
 
   <!-- HOME -->
   <section id="vHome" class="view" hidden>
     <div class="card">
       <div class="hello">Hola,<b id="hNombre"></b></div>
-      <label class="f" for="hMercado">Hoy trabajo en</label>
+      <label class="f" for="hMercado">Mercado</label>
       <select id="hMercado"></select>
       <div style="margin-top:10px" id="hAsis"></div>
     </div>
     <div class="card">
-      <div class="eq" style="margin:0 0 14px"><div class="s"><b>8</b>sacos Ricocan o Ricocat</div><span>=</span><div class="v"><b>1 vale</b>pavo Redondos 7 kg</div></div>
+      <div class="eq" style="margin:0 0 14px"><div class="s"><b id="hReq">–</b>sacos Ricocan y/o Ricocat</div><span>=</span><div class="v"><b>1 vale</b>pavo Redondos 7 kg</div></div>
       <div class="muted">Canjes de hoy</div>
       <div class="big" id="hCanjes">0 <small>/ 6</small></div>
       <div class="progress"><i id="hBar" style="width:0"></i></div>
@@ -211,9 +212,12 @@
       </div>
       <label class="f" for="pCliente">Nombre del cliente o negocio</label>
       <input id="pCliente" type="text" autocomplete="off">
+      <label class="f" for="pDni">DNI del cliente <span class="opt" id="pDniOpt">(obligatorio para el canje)</span></label>
+      <input id="pDni" type="text" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="8 dígitos" autocapitalize="characters">
+      <div class="dni-estado" id="pDniEstado" hidden></div>
       <label class="f" for="pCelular">Celular <span class="opt">(opcional)</span></label>
       <input id="pCelular" type="tel" inputmode="numeric" maxlength="9" placeholder="9 dígitos">
-      <label class="check" id="pConsWrap" hidden><input type="checkbox" id="pCons"><span>El cliente acepta que Rinti y la agencia guarden su celular para validar el canje (Ley 29733).</span></label>
+      <label class="check" id="pConsWrap" hidden><input type="checkbox" id="pCons"><span>El cliente acepta que Rinti y la agencia guarden su DNI y celular para validar el canje (Ley 29733).</span></label>
     </div>
 
     <div class="card">
@@ -240,7 +244,7 @@
         <div class="muted" id="pValeHint"></div>
       </div>
       <label class="f">Foto de la boleta o factura <span class="opt" id="pCompOpt">(opcional)</span></label>
-      <label class="foto" data-key="foto_comprobante"><input type="file" accept="image/*" capture="environment"><span class="ph">🧾</span><span class="t">Tomar foto<small>Que se lean los 8 sacos y el total</small></span></label>
+      <label class="foto" data-key="foto_comprobante"><input type="file" accept="image/*" capture="environment"><span class="ph">🧾</span><span class="t">Tomar foto<small>Que se lean los sacos y el total</small></span></label>
     </div>
 
     <div class="card" id="pCanje" hidden>
@@ -349,7 +353,18 @@ function contador(delta) {
   if (delta) { for (const k in delta) c[k] = Math.max(0, (c[k] || 0) + delta[k]); store.set(cntKey(), c); }
   return c;
 }
-function mercadoHoy() { return store.get(mercKey(), (S.user && S.user.mercado) || C.MERCADOS[0]); }
+// La impulsadora trabaja siempre en el mercado de su usuario; el supervisor elige.
+function mercadoHoy() {
+  if (S.user && S.user.rol !== 'supervisor' && S.user.mercado) return S.user.mercado;
+  return store.get(mercKey(), (S.user && S.user.mercado) || C.MERCADOS[0]);
+}
+const REGLAS = Object.assign({}, C.SACOS_POR_MERCADO, store.get('reglas', {}));
+const sacosReq = () => REGLAS[mercadoHoy()] || 0;
+const dnisKey = () => `dnis:${hoy()}`;
+const normDni = s => String(s || '').toUpperCase().replace(/[\s.-]+/g, '');
+const dniValido = d => /^\d{8}$/.test(d) || /^[A-Z0-9]{9,12}$/.test(d);
+// Accesos v3 (un usuario por mercado): las sesiones anteriores deben volver a ingresar.
+if (store.get('authv', 0) !== 3) { store.del('user'); store.del('cred'); store.set('authv', 3); S.user = null; S.cred = null; }
 
 /* ---------- red ---------- */
 async function enviar(payload) {
@@ -513,33 +528,31 @@ window.addEventListener('popstate', () => {});
 
 /* ---------- login ---------- */
 async function cargarEquipo() {
-  if (DEMO) {
-    S.equipo = C.MERCADOS.map((m, i) => ({ nombre: 'Impulsadora ' + (i + 1), rol: 'impulsadora', mercado: m })).concat([{ nombre: 'Supervisor 1', rol: 'supervisor', mercado: '' }]);
-  } else {
-    try {
-      const r = await fetch(API + '?action=config').then(r => r.json());
-      if (r.ok) {
-        S.equipo = r.equipo; store.set('equipo', r.equipo);
-        const m = Number(r.config && r.config.meta_diaria_por_impulsadora); if (m) { S.meta = m; store.set('meta', m); }
-      }
-    } catch { /* sin señal: usa lo guardado */ }
-  }
-  const sel = $('#lNombre');
-  if (!S.equipo || !S.equipo.length) { sel.innerHTML = '<option value="">Sin conexión: abre la app con señal la primera vez</option>'; return; }
-  sel.innerHTML = '<option value="">Elige tu nombre</option>' + S.equipo.map(p => `<option>${esc(p.nombre)}</option>`).join('');
+  if (DEMO) return;
+  try {
+    const r = await fetch(API + '?action=config').then(r => r.json());
+    if (r.ok) {
+      const m = Number(r.config && r.config.meta_diaria_por_impulsadora); if (m) { S.meta = m; store.set('meta', m); }
+      if (r.sacos_por_mercado) { Object.assign(REGLAS, r.sacos_por_mercado); store.set('reglas', r.sacos_por_mercado); }
+      if (S.user) pintarHome();
+    }
+  } catch { /* sin señal: usa lo guardado */ }
 }
+const sinTildes = s => String(s).toLowerCase().normalize('NFD').replace(/[^a-z]/g, '');
 $('#btnLogin').onclick = async () => {
-  const nombre = $('#lNombre').value, usuario = $('#lUsuario').value.trim(), clave = $('#lClave').value;
+  const usuario = $('#lUsuario').value.trim().toLowerCase(), clave = $('#lClave').value.trim();
   const err = m => { $('#lErr').textContent = m; $('#lErr').hidden = !m; };
   if (!usuario) return err('Escribe el usuario');
   if (!clave) return err('Escribe la contraseña');
-  if (!nombre) return err('Elige tu nombre');
   err(''); overlay(true, 'Verificando…');
   try {
     let user;
-    if (DEMO) user = S.equipo.find(p => p.nombre === nombre);
-    else {
-      const r = await enviar({ tipo: 'login', nombre, usuario, clave });
+    if (DEMO) {
+      const u = sinTildes(usuario).replace(/^unicachi/, '');
+      user = usuario === 'supervisor' ? { nombre: 'Supervisor (práctica)', rol: 'supervisor', mercado: '' }
+        : { nombre: 'Impulsadora (práctica)', rol: 'impulsadora', mercado: C.MERCADOS.find(m => u && sinTildes(m).includes(u)) || C.MERCADOS[0] };
+    } else {
+      const r = await enviar({ tipo: 'login', usuario, clave });
       if (!r.ok) return err(r.error || 'No se pudo ingresar');
       user = r.usuario;
     }
@@ -556,15 +569,17 @@ $('#btnSalir').onclick = async () => {
 
 /* ---------- home ---------- */
 function entrar() {
-  $('#hdrSub').textContent = S.user.nombre;
-  opts($('#hMercado'), C.MERCADOS, mercadoHoy());
+  $('#hdrSub').textContent = S.user.rol === 'supervisor' ? S.user.nombre + ' · Supervisor' : S.user.nombre + ' · ' + S.user.mercado;
+  opts($('#hMercado'), S.user.rol === 'supervisor' ? C.MERCADOS : [mercadoHoy()], mercadoHoy());
+  $('#hMercado').disabled = S.user.rol !== 'supervisor';
   $('#goCierre').hidden = S.user.rol !== 'supervisor';
   show('vHome'); pintarHome(); refrescarCola(); procesarCola();
 }
-$('#hMercado').onchange = e => { store.set(mercKey(), e.target.value); };
+$('#hMercado').onchange = e => { store.set(mercKey(), e.target.value); pintarHome(); };
 function pintarHome() {
   if (!S.user) return;
   $('#hNombre').textContent = S.user.nombre;
+  $('#hReq').textContent = sacosReq() || '–';
   const c = contador();
   $('#hCanjes').innerHTML = `${c.canjes} <small>/ ${S.meta} canjes</small>`;
   $('#hBar').style.width = Math.min(100, c.canjes / S.meta * 100) + '%';
@@ -600,25 +615,47 @@ const n = id => Math.max(0, parseInt($('#' + id).value, 10) || 0);
 $$('[data-step]').forEach(b => b.onclick = () => { const i = $('#' + b.dataset.step); i.value = Math.max(0, (parseInt(i.value, 10) || 0) + Number(b.dataset.d)); calcPedido(); });
 ['pRc', 'pRt'].forEach(id => $('#' + id).addEventListener('input', calcPedido));
 $('#pRc').addEventListener('focus', e => e.target.select()); $('#pRt').addEventListener('focus', e => e.target.select());
-$('#pCelular').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, ''); $('#pConsWrap').hidden = !e.target.value; });
+const consVisible = () => { $('#pConsWrap').hidden = !($('#pCelular').value || $('#pDni').value); };
+$('#pCelular').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, ''); consVisible(); });
+let dniT, dniUsado = false;
+function estadoDni(cls, txt) { const el = $('#pDniEstado'); el.className = 'dni-estado ' + cls; el.textContent = txt; el.hidden = !txt; }
+$('#pDni').addEventListener('input', e => {
+  e.target.value = normDni(e.target.value); consVisible();
+  const d = e.target.value; dniUsado = false; clearTimeout(dniT);
+  if (!d) return estadoDni('', '');
+  if (!dniValido(d)) return estadoDni('info', d.length < 8 ? 'DNI de 8 dígitos' : 'Revisa el número de documento');
+  if (store.get(dnisKey(), []).includes(d)) { dniUsado = true; return estadoDni('err', '✕ Este DNI ya recibió un vale hoy. Máximo 1 vale por DNI al día.'); }
+  if (DEMO) return estadoDni('ok', '✔ Puede recibir su vale hoy');
+  estadoDni('info', 'Verificando DNI…');
+  dniT = setTimeout(async () => {
+    try {
+      const r = await enviar({ tipo: 'verificar_dni', dni: d, nombre: S.user.nombre, usuario: S.cred.usuario, clave: S.cred.clave });
+      if ($('#pDni').value !== d) return;
+      if (r.ok && r.disponible === false) { dniUsado = true; estadoDni('err', '✕ ' + r.mensaje + '. Máximo 1 vale por DNI al día.'); }
+      else if (r.ok) estadoDni('ok', '✔ ' + r.mensaje);
+      else estadoDni('info', r.error || 'No se pudo verificar');
+    } catch { if ($('#pDni').value === d) estadoDni('info', 'Sin señal: no se pudo verificar. Se revisará al enviar.'); }
+  }, 450);
+});
 let valesPrev = -1;
 function calcPedido() {
-  const rc = n('pRc'), rt = n('pRt'), tot = rc + rt, vales = Math.floor(tot / C.SACOS_POR_VALE), kg = rc * C.KG.ricocan + rt * C.KG.ricocat;
-  const falta = C.SACOS_POR_VALE - (tot % C.SACOS_POR_VALE);
+  const rc = n('pRc'), rt = n('pRt'), tot = rc + rt, req = sacosReq(), vales = req && tot >= req ? 1 : 0, kg = rc * C.KG.ricocan + rt * C.KG.ricocat;
+  const merc = mercadoHoy();
   const box = $('#pResumen');
   box.className = 'summary' + (vales ? ' canje' : '');
-  box.innerHTML = !tot ? 'Indica cuántos sacos compró el cliente.'
-    : vales ? `<b>${tot} sacos → ${vales} vale${vales > 1 ? 's' : ''} de pavo</b><br>${kg} kg en total${tot % C.SACOS_POR_VALE ? ` · le faltan ${falta} para otro vale` : ''}`
-    : `<b>${tot} saco${tot > 1 ? 's' : ''}: pedido sin canje</b><br>Le faltan ${falta} para el vale de pavo`;
+  box.innerHTML = !tot ? `En <b>${esc(merc)}</b> el vale sale con <b>${req} sacos</b> (Ricocan y/o Ricocat).`
+    : vales ? `<b>${tot} sacos → 1 vale de pavo</b><br>${kg} kg · máximo 1 vale por DNI al día`
+    : `<b>${tot} saco${tot > 1 ? 's' : ''}: pedido sin canje</b><br>${req - tot === 1 ? "Le falta 1 saco" : "Le faltan " + (req - tot) + " sacos"} para el vale (en ${esc(merc)} se piden ${req})`;
+  $('#pDniOpt').textContent = vales ? '(obligatorio)' : '(obligatorio para el canje)';
   $('#pCanje').hidden = !vales;
   $('#pCompOpt').textContent = vales ? '(obligatoria)' : '(opcional)';
   if (vales !== valesPrev) {
     const prev = $$('#pCodes input:not(:disabled)').map(i => i.value);
     $('#pCodes').innerHTML = vales
-      ? Array.from({ length: vales }, (_, i) => `<input type="text" autocapitalize="characters" autocomplete="off" placeholder="${vales > 1 ? 'Vale ' + (i + 1) + ': ' : ''}Código impreso en el vale" value="${esc(prev[i] || '')}">`).join('')
-      : '<input type="text" disabled placeholder="Se activa con 8 sacos">';
-    $('#pValesN').textContent = vales > 1 ? `(${vales} vales, un código por vale)` : vales ? '(obligatorio)' : '';
-    $('#pValeHint').textContent = vales ? 'Escribe el código tal como está impreso en el vale que entregas.' : 'Cada vale tiene un código. Se registra cuando el cliente compra 8 sacos o más.';
+      ? `<input type="text" autocapitalize="characters" autocomplete="off" placeholder="Código impreso en el vale" value="${esc(prev[0] || '')}">`
+      : `<input type="text" disabled placeholder="Se activa con ${sacosReq()} sacos">`;
+    $('#pValesN').textContent = vales ? '(obligatorio)' : '';
+    $('#pValeHint').textContent = vales ? 'Escribe el código tal como está impreso en el vale que entregas.' : `Cada vale tiene un código. Se registra cuando el cliente compra ${sacosReq()} sacos o más.`;
     if (vales && valesPrev <= 0) requestAnimationFrame(firma.ajustar);
     valesPrev = vales;
   }
@@ -629,15 +666,17 @@ function onMercadoPedido() {
 }
 $('#goPedido').onclick = () => {
   const v = $('#vPedido');
-  ['pPuesto', 'pCliente', 'pCelular', 'pNComp', 'pObs'].forEach(id => $('#' + id).value = '');
+  ['pPuesto', 'pCliente', 'pDni', 'pCelular', 'pNComp', 'pObs'].forEach(id => $('#' + id).value = '');
+  estadoDni('', ''); dniUsado = false;
   $('#pRc').value = 0; $('#pRt').value = 0; $('#pCons').checked = false; $('#pLima').checked = false; $('#pConsWrap').hidden = true;
   $('#pPuestoSel').innerHTML = '<option value="">Elige el puesto</option>' + C.PUESTOS_PRODUCTORES.map(p => `<option>${esc(p)}</option>`).join('');
   resetFotos(v); showErr(v, ''); valesPrev = -1; onMercadoPedido(); calcPedido(); show('vPedido');
 };
 $('#pEnviar').onclick = async () => {
   const v = $('#vPedido');
-  const rc = n('pRc'), rt = n('pRt'), tot = rc + rt, vales = Math.floor(tot / C.SACOS_POR_VALE);
+  const rc = n('pRc'), rt = n('pRt'), tot = rc + rt, req = sacosReq(), vales = req && tot >= req ? 1 : 0;
   const prod = /productores/i.test(mercadoHoy());
+  const dni = normDni($('#pDni').value);
   const puesto = prod ? $('#pPuestoSel').value : $('#pPuesto').value.trim();
   const codigos = $$('#pCodes input:not(:disabled)').map(i => i.value.trim().toUpperCase().replace(/\s+/g, ''));
   const cel = $('#pCelular').value.trim();
@@ -645,20 +684,22 @@ $('#pEnviar').onclick = async () => {
   if (prod && !puesto) return e('Elige el puesto de Mercado Productores');
   if (!$('#pCliente').value.trim()) return e('Falta el nombre del cliente o negocio');
   if (cel && cel.length !== 9) return e('El celular debe tener 9 dígitos');
-  if (cel && !$('#pCons').checked) return e('Marca el consentimiento del cliente o borra el celular');
+  if (dni && !dniValido(dni)) return e('El DNI debe tener 8 dígitos');
+  if ((cel || dni) && !$('#pCons').checked) return e('Marca el consentimiento del cliente');
   if (!tot) return e('Indica la cantidad de sacos');
   if (vales) {
+    if (!dni) return e('Falta el DNI del cliente');
+    if (dniUsado) return e('Este DNI ya recibió un vale hoy. Máximo 1 vale por DNI al día.');
     if (!$('#pNComp').value.trim()) return e('Falta el número de boleta o factura');
-    if (codigos.some(c => !c)) return e(vales > 1 ? 'Faltan códigos de vale' : 'Falta el código del vale');
+    if (codigos.some(c => !c)) return e('Falta el código del vale');
     if (!foto('vPedido', 'foto_comprobante')) return e('Falta la foto de la boleta o factura');
-    if (new Set(codigos).size !== codigos.length) return e('Hay códigos de vale repetidos');
     if (!foto('vPedido', 'foto_entrega')) return e('Falta la foto del cliente recibiendo el vale');
     if (firma.vacia()) return e('Falta la firma del cliente');
     if (!$('#pLima').checked) return e('Confirma que la compra es en Lima');
   }
   e(''); overlay(true);
   const payload = {
-    tipo: 'pedido', mercado: mercadoHoy(), puesto, cliente: $('#pCliente').value.trim(), celular: cel, consentimiento: $('#pCons').checked,
+    tipo: 'pedido', mercado: mercadoHoy(), puesto, cliente: $('#pCliente').value.trim(), dni, celular: cel, consentimiento: $('#pCons').checked,
     ricocan: rc, ricocat: rt, tipo_comprobante: $('#pTipoComp').value, n_comprobante: $('#pNComp').value.trim().toUpperCase(),
     codigos: vales ? codigos : [], foto_comprobante: foto('vPedido', 'foto_comprobante'),
     foto_entrega: vales ? foto('vPedido', 'foto_entrega') : '', firma: vales ? firma.dataUrl() : '',
@@ -669,7 +710,8 @@ $('#pEnviar').onclick = async () => {
   overlay(false);
   if (r.estado === 'error') return e(r.error);
   contador(delta);
-  toast(r.estado === 'cola' ? 'Guardado sin señal. Se enviará solo.' : vales ? `Canje registrado ✔ (${vales} vale${vales > 1 ? 's' : ''})` : 'Pedido registrado ✔');
+  if (vales) store.set(dnisKey(), store.get(dnisKey(), []).concat([dni]));
+  toast(r.estado === 'cola' ? 'Guardado sin señal. Se enviará solo.' : vales ? 'Canje registrado ✔ (1 vale)' : 'Pedido registrado ✔');
   show('vHome'); pintarHome();
 };
 
@@ -688,7 +730,7 @@ $('#iEnviar').onclick = async () => {
 };
 
 /* ---------- cierre ---------- */
-$('#goCierre').onclick = () => { const v = $('#vCierre'); opts($('#cMercado'), C.MERCADOS); ['cIni', 'cEnt', 'cVales', 'cObs'].forEach(id => $('#' + id).value = ''); calcSaldo(); showErr(v, ''); show('vCierre'); };
+$('#goCierre').onclick = () => { const v = $('#vCierre'); opts($('#cMercado'), C.MERCADOS, mercadoHoy()); ['cIni', 'cEnt', 'cVales', 'cObs'].forEach(id => $('#' + id).value = ''); calcSaldo(); showErr(v, ''); show('vCierre'); };
 function calcSaldo() { const i = n('cIni'), e = n('cEnt'); $('#cSaldo').textContent = $('#cIni').value === '' ? 'Saldo: —' : `Saldo de pavos: ${i - e}`; }
 ['cIni', 'cEnt'].forEach(id => $('#' + id).addEventListener('input', calcSaldo));
 $('#cEnviar').onclick = async () => {

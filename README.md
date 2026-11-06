@@ -1,7 +1,18 @@
 # Canje Rinti · Registro de campo y dashboard
 
 Sistema para la campaña **Canje Rinti (Ricocan / Ricocat)**: 9 impulsadoras en 8 mercados + Mercado Productores.
-Mecánica: **8 sacos (Ricocan 22 kg o Ricocat 15 kg) = 1 vale de pavo Redondos de 7 kg**. Meta: **6 canjes por impulsadora al día**.
+Mecánica: el cliente compra **N sacos (Ricocan 22 kg y/o Ricocat 15 kg, se pueden sumar)** y recibe **1 vale de pavo Redondos de 7 kg**. **Máximo 1 vale por DNI al día**, aunque compre varias veces. Meta: **6 canjes por impulsadora al día**.
+
+| Mercado | Sacos para 1 vale |
+|---|---|
+| Mercado Productores | 25 |
+| Fiori | 17 |
+| Unicachi Sur | 12 |
+| Parada | 12 |
+| Unicachi Norte Mayorista | 10 |
+| Unicachi Norte Minorista, Huamantanga, Ciudad de Dios, Caquetá | 5 |
+
+Las reglas están en `SACOS_POR_MERCADO` (apps-script/Code.gs, que manda) y en `config.js` (copia para usar sin señal).
 
 | Página | Para quién | Qué hace |
 |---|---|---|
@@ -52,8 +63,9 @@ Sin `API_URL` configurada, ambas páginas funcionan en **modo demo** (la app no 
 
 ### 4. Antes de salir a campo
 - En la pestaña **Equipo** cambia "Impulsadora 1…9" por los nombres reales y revisa el mercado de cada una.
-- **Accesos** (pestaña **Config**): `app_usuario` / `app_clave` es el acceso general de las promotoras (luego eligen su nombre); `cliente_usuario` / `cliente_clave` es el acceso del dashboard para Rinti. Puedes cambiar las contraseñas ahí mismo; aplica al instante.
-- El PIN de la pestaña Equipo queda como alternativa por si luego se quiere acceso individual.
+- **Accesos de impulsadoras**: uno por mercado, en la pestaña **Equipo** (columnas `usuario` y `contrasena`). Cada impulsadora solo registra en su mercado. El supervisor (usuario `supervisor`) elige el mercado.
+- **Acceso del cliente**: pestaña **Config**, filas `cliente_usuario` y `cliente_clave`.
+- Las contraseñas se pueden cambiar escribiendo en la hoja; aplica al instante.
 - En **Config** pon `fecha_inicio`, `fecha_fin` y `hora_ingreso`.
 - Haz una prueba completa y **borra las filas de prueba** (no las cabeceras) en Asistencia, Pedidos, Vales, Incidencias y Cierres.
 - En la capacitación, cada chica abre el link y lo agrega a la pantalla de inicio ("Agregar a inicio").
@@ -64,6 +76,12 @@ Sin `API_URL` configurada, ambas páginas funcionan en **modo demo** (la app no 
 - **Vale repetido:** el sistema rechaza un código de vale ya usado.
 - **Link del cliente filtrado:** ejecuta `renovarTokenDashboard()` en Apps Script y envía el link nuevo.
 
+## Pruebas del backend
+
+```bash
+osascript -l JavaScript tests/test_backend.js
+```
+
 ## Privacidad
-- El celular del comprador solo se guarda con su consentimiento (Ley 29733) y **no aparece en el dashboard del cliente**.
+- El DNI y el celular del comprador solo se guardan con su consentimiento (Ley 29733). El dashboard del cliente no muestra el celular y muestra el DNI enmascarado (solo los 3 últimos dígitos).
 - Las fotos quedan en tu Drive con acceso "cualquiera con el enlace" (necesario para mostrarlas en el dashboard). Los enlaces no son públicos ni se pueden buscar.
