@@ -297,6 +297,7 @@ const num = v => { const x = Number(String(v).replace(',', '.')); return isFinit
 const fmt = n => Math.round(n).toLocaleString('es-PE');
 const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
 const hoy = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+const fmtProm = n => (Math.round(n * 10) / 10).toLocaleString('es-PE');
 const addDias = (f, d) => { const x = new Date(f + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + d); return x.toISOString().slice(0, 10); };
 const fCorta = f => { const [y, m, d] = f.split('-'); return `${d}/${m}`; };
 const driveId = u => (String(u).match(/\/d\/([^/]+)/) || [])[1];
@@ -407,7 +408,7 @@ function pintar() {
   $('#printHdr').textContent = `Reporte ${ra === rb ? fCorta(ra) : fCorta(ra) + ' al ' + fCorta(rb)} · ${F.mercado || 'Todos los mercados'} · generado ${new Date().toLocaleString('es-PE')}`;
 
   $('#kpis').innerHTML = [
-    kpi('Canjes realizados', fmt(canjes.length), `/ ${fmt(meta)}`, `${pct(canjes.length, meta)}% de la meta (${D.meta} por impulsadora al día)`, pct(canjes.length, meta)),
+    kpi('Canjes realizados', fmt(canjes.length), dias.length > 1 ? `· ${fmtProm(canjes.length / dias.length)} por día` : `/ ${fmt(D.meta * imp)}`, `${pct(canjes.length, meta)}% de la meta diaria (${D.meta} por impulsadora al día = ${fmt(D.meta * imp)} por día)`, pct(canjes.length, meta)),
     kpi('Vales entregados', fmt(vales), '', `1 vale = 1 pavo Redondos de 7 kg · máx. 1 por DNI al día`),
     kpi('Pedidos generados', fmt(P.length), '', `${pct(canjes.length, P.length)}% llegaron a los sacos del canje`),
     kpi('Sacos comprados', fmt(rc + rt), '', `Ricocan ${fmt(rc)} · Ricocat ${fmt(rt)} · ${fmt(kg)} kg`),
@@ -526,7 +527,7 @@ function tablaMercado(P, A, I, dias) {
     const imp = impulsadorasPorMercado(m);
     const r = {
       ped: p.length, rc: p.reduce((s, x) => s + x._rc, 0), rt: p.reduce((s, x) => s + x._rt, 0),
-      cj: cj.length, v: cj.reduce((s, x) => s + x._vales, 0), meta: D.meta * imp * dias.length,
+      cj: cj.length, v: cj.reduce((s, x) => s + x._vales, 0), meta: D.meta * imp,
       jor: new Set(A.filter(a => a.mercado === m && a.marca === 'Entrada').map(a => a.fecha + a.impulsadora)).size, esp: imp * dias.length,
       inc: I.filter(x => x.mercado === m).length,
     };
@@ -535,16 +536,16 @@ function tablaMercado(P, A, I, dias) {
     return fila(m, nombres, r);
   });
   function fila(m, nombres, r, foot) {
-    const p = pct(r.cj, r.meta);
+    const p = pct(r.cj, r.meta * dias.length);
     const req = D.reglas[m];
     return `<tr><td><b>${esc(m)}</b>${nombres ? `<div style="color:var(--muted);font-size:12px">${esc(nombres)}</div>` : ''}</td>
       <td class="n">${req ? req : ''}</td><td class="n">${r.jor} / ${r.esp}</td><td class="n">${fmt(r.ped)}</td><td class="n">${fmt(r.rc)}</td><td class="n">${fmt(r.rt)}</td>
-      <td class="n"><b>${fmt(r.cj)}</b></td><td class="n">${fmt(r.v)}</td><td class="n">${fmt(r.meta)}</td>
+      <td class="n"><b>${fmt(r.cj)}</b></td>${dias.length > 1 ? `<td class="n">${fmtProm(r.cj / dias.length)}</td>` : ''}<td class="n">${fmt(r.v)}</td><td class="n">${fmt(r.meta)}</td>
       <td class="n"><div class="mini"><span>${p}%</span><span class="b"><i style="width:${Math.min(100, p)}%"></i></span></div></td>
       ${INTERNO ? `<td class="n">${r.inc || '<span style="color:var(--muted)">0</span>'}</td>` : ''}</tr>`;
   }
-  $('#subMercado').textContent = `Meta: ${D.meta} canjes por impulsadora × ${dias.length} día${dias.length > 1 ? 's' : ''} de operación`;
-  $('#tMercado').innerHTML = `<thead><tr><th>Mercado</th><th class="n" title="Sacos Ricocan y/o Ricocat para 1 vale">Sacos x vale</th><th class="n">Asistencia</th><th class="n">Pedidos</th><th class="n">Sacos Ricocan</th><th class="n">Sacos Ricocat</th><th class="n">Canjes</th><th class="n">Vales</th><th class="n">Meta</th><th class="n">Avance</th>${INTERNO ? '<th class="n">Incid.</th>' : ''}</tr></thead>
+  $('#subMercado').textContent = `Meta: ${D.meta} canjes por impulsadora por día` + (dias.length > 1 ? ` · ${dias.length} días de operación: el avance compara el promedio diario con la meta` : '');
+  $('#tMercado').innerHTML = `<thead><tr><th>Mercado</th><th class="n" title="Sacos Ricocan y/o Ricocat para 1 vale">Sacos x vale</th><th class="n">Asistencia</th><th class="n">Pedidos</th><th class="n">Sacos Ricocan</th><th class="n">Sacos Ricocat</th><th class="n">Canjes</th>${dias.length > 1 ? '<th class="n">Prom. / día</th>' : ''}<th class="n">Vales</th><th class="n">Meta diaria</th><th class="n">Avance</th>${INTERNO ? '<th class="n">Incid.</th>' : ''}</tr></thead>
     <tbody>${rows.join('')}</tbody>${mercados.length > 1 ? `<tfoot>${fila('Total', '', tot)}</tfoot>` : ''}`;
 }
 function tablaCuadre(CI) {
