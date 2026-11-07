@@ -12,12 +12,12 @@ Mecánica: el cliente compra **N sacos (Ricocan 22 kg y/o Ricocat 15 kg, se pued
 
 | Mercado | Sacos para 1 vale |
 |---|---|
-| Mercado Productores | 25 |
-| Fiori | 17 |
-| Unicachi Sur | 12 |
-| Parada | 12 |
-| Unicachi Norte Mayorista | 10 |
-| Unicachi Norte Minorista, Huamantanga, Ciudad de Dios, Caquetá | 5 |
+| Mercado Productores | 30 |
+| Fiori | 22 |
+| Unicachi Sur | 17 |
+| Parada | 17 |
+| Unicachi Norte Mayorista | 15 |
+| Unicachi Norte Minorista, Huamantanga, Ciudad de Dios, Caquetá | 10 |
 
 Las reglas están en `SACOS_POR_MERCADO` (apps-script/Code.gs, que manda) y en `config.js` (copia para usar sin señal).
 

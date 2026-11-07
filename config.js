@@ -8,15 +8,15 @@ window.RINTI = {
   // Sacos (Ricocan y/o Ricocat) para 1 vale, por mercado. Máximo 1 vale por DNI al día.
   // El backend manda la versión vigente; esta copia se usa sin conexión.
   SACOS_POR_MERCADO: {
-    'Mercado Productores': 25,
-    'Fiori': 17,
-    'Unicachi Sur': 12,
-    'Parada': 12,
-    'Unicachi Norte Mayorista': 10,
-    'Unicachi Norte Minorista': 5,
-    'Huamantanga': 5,
-    'Ciudad de Dios': 5,
-    'Caquetá': 5,
+    'Mercado Productores': 30,
+    'Fiori': 22,
+    'Unicachi Sur': 17,
+    'Parada': 17,
+    'Unicachi Norte Mayorista': 15,
+    'Unicachi Norte Minorista': 10,
+    'Huamantanga': 10,
+    'Ciudad de Dios': 10,
+    'Caquetá': 10,
   },
   KG: { ricocan: 22, ricocat: 15 },
   META_DIARIA: 6,              // se reemplaza por la hoja Config si existe

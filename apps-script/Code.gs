@@ -19,15 +19,15 @@ const MERCADOS = [
 
 // Sacos (Ricocan y/o Ricocat, se pueden sumar) que el cliente debe comprar para recibir 1 vale.
 const SACOS_POR_MERCADO = {
-  'Mercado Productores': 25,
-  'Fiori': 17,
-  'Unicachi Sur': 12,
-  'Parada': 12,
-  'Unicachi Norte Mayorista': 10,
-  'Unicachi Norte Minorista': 5,
-  'Huamantanga': 5,
-  'Ciudad de Dios': 5,
-  'Caquetá': 5,
+  'Mercado Productores': 30,
+  'Fiori': 22,
+  'Unicachi Sur': 17,
+  'Parada': 17,
+  'Unicachi Norte Mayorista': 15,
+  'Unicachi Norte Minorista': 10,
+  'Huamantanga': 10,
+  'Ciudad de Dios': 10,
+  'Caquetá': 10,
 };
 
 // Usuario de acceso de cada mercado (uno por impulsadora).
