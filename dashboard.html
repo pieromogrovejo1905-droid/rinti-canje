@@ -308,6 +308,9 @@ const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
 const hoy = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
 const fmtProm = n => (Math.round(n * 10) / 10).toLocaleString('es-PE');
 const addDias = (f, d) => { const x = new Date(f + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + d); return x.toISOString().slice(0, 10); };
+// Días de trabajo (lunes a sábado). Un domingo cuenta solo si hubo canjes ese día.
+const esDomingo = f => new Date(f + 'T12:00:00Z').getUTCDay() === 0;
+const diasHabiles = (ini, fin, conCanje) => { const r = []; for (let f = ini; f <= fin; f = addDias(f, 1)) if (!esDomingo(f) || (conCanje && conCanje.has(f))) r.push(f); return r; };
 const fCorta = f => { const [y, m, d] = f.split('-'); return `${d}/${m}`; };
 const driveId = u => (String(u).match(/\/d\/([^/]+)/) || [])[1];
 const thumb = (u, w = 400) => !u ? '' : u.startsWith('data:') ? u : driveId(u) ? `https://drive.google.com/thumbnail?id=${driveId(u)}&sz=w${w}` : u;
@@ -566,8 +569,7 @@ const ORDEN_EFECTIVOS = ['Caquetá', 'Unicachi Norte Minorista', 'Fiori', 'Merca
 function tablaEfectivos() {
   const ini = C.INICIO_EFECTIVO || D.inicio || hoy();
   const fin = D.fin && D.fin < hoy() ? D.fin : hoy();
-  const fechas = [];
-  for (let f = ini; f <= fin; f = addDias(f, 1)) fechas.push(f);
+  const fechas = diasHabiles(ini, fin, new Set(D.pedidos.filter(p => p._canje).map(p => p.fecha)));
   if (!fechas.length) fechas.push(ini);
   const mercados = [...ORDEN_EFECTIVOS.filter(m => D.mercados.includes(m)), ...D.mercados.filter(m => !ORDEN_EFECTIVOS.includes(m))];
   const nD = fechas.length, ult = fechas[nD - 1];
@@ -585,7 +587,7 @@ function tablaEfectivos() {
   const all = [...rows.map(r => r.alc), tot.alc], allA = [...rows.map(r => r.acu), tot.acu];
   const hA = escala(all), hB = escala(allA);
   const celda = (v, h) => `<td class="pc" style="background:hsl(${Math.round(h(v))},68%,70%)">${v}%</td>`;
-  $('#subEfectivos').textContent = `Día 1 = ${fCorta(ini)} · Día ${nD} = ${ult === hoy() ? 'hoy, en curso' : fCorta(ult)} · Meta: ${D.meta} vales por impulsadora por día`;
+  $('#subEfectivos').textContent = `Día 1 = ${fCorta(ini)} · Día ${nD} = ${ult === hoy() ? 'hoy, en curso' : fCorta(ult)} · Meta: ${D.meta} vales por impulsadora por día · lunes a sábado`;
   $('#tEfectivos').innerHTML = `<thead><tr><th>Mercado</th><th>Vales x día</th>${fechas.map((f, i) => `<th title="${fCorta(f)}">Día ${i + 1}<div style="font-weight:400;color:var(--muted);font-size:11px">${fCorta(f)}</div></th>`).join('')}<th>Alcance día ${nD}</th><th>Acumulado</th></tr></thead>
     <tbody>${rows.map(r => `<tr><td><b>${esc(r.m)}</b></td><td>${r.meta}</td>${r.cnt.map(c => `<td><b>${c}</b></td>`).join('')}${celda(r.alc, hA)}${celda(r.acu, hB)}</tr>`).join('')}</tbody>
     <tfoot><tr><td>Total</td><td>${tMeta}</td>${tCnt.map(c => `<td>${c}</td>`).join('')}${celda(tot.alc, hA)}${celda(tot.acu, hB)}</tr></tfoot>`;
@@ -595,24 +597,30 @@ function tablaEfectivos() {
 function tablaCuadre() {
   const cfg = D.config || {};
   const mercados = [...ORDEN_EFECTIVOS.filter(m => D.mercados.includes(m)), ...D.mercados.filter(m => !ORDEN_EFECTIVOS.includes(m))];
-  const t = { c: 0, u: 0, sinCuota: 0 };
-  const fila = (m, cuota, usados, foot) => {
+  const t = { c: 0, u: 0, e: 0, sinCuota: 0 };
+  const h = hoy(), finC = D.fin && D.fin < h ? D.fin : h;
+  const nDias = D.inicio ? diasHabiles(D.inicio, finC).length : 0;
+  const fila = (m, cuota, usados, esperado, foot) => {
     const tiene = cuota > 0, p = tiene ? pct(usados, cuota) : 0;
     const saldo = tiene ? cuota - usados : null;
-    return `<tr><td>${foot ? 'Total' : `<b>${esc(m)}</b>`}</td><td class="n">${tiene ? fmt(cuota) : '<span style="color:var(--muted)">—</span>'}</td><td class="n"><b>${fmt(usados)}</b></td>
+    const dif = usados - esperado;
+    return `<tr><td>${foot ? 'Total' : `<b>${esc(m)}</b>`}</td><td class="n">${tiene ? fmt(cuota) : '<span style="color:var(--muted)">—</span>'}</td>
+      <td class="n">${fmt(esperado)}</td><td class="n"><b>${fmt(usados)}</b></td>
+      <td class="n">${dif >= 0 ? `<span class="st ok">${dif > 0 ? '+' : ''}${fmt(dif)}</span>` : `<span class="st err">${fmt(dif)}</span>`}</td>
       <td class="n">${saldo == null ? '<span style="color:var(--muted)">—</span>' : saldo < 0 ? `<span class="st err">${fmt(saldo)}</span>` : fmt(saldo)}</td>
       <td class="n">${tiene ? `<div class="mini"><span>${p}%</span><span class="b"><i style="width:${Math.min(100, p)}%"></i></span></div>` : '<span style="color:var(--muted)">sin cuota</span>'}</td></tr>`;
   };
   const rows = mercados.map(m => {
     const cuota = num(cfg['cuota_vales_' + m]);
     const usados = D.pedidos.filter(p => p.mercado === m).reduce((s, p) => s + p._vales, 0);
-    t.c += cuota; t.u += usados; if (!cuota) t.sinCuota++;
-    return fila(m, cuota, usados);
+    const esperado = Math.min(cuota || Infinity, D.meta * impulsadorasPorMercado(m) * nDias);
+    t.c += cuota; t.u += usados; t.e += esperado; if (!cuota) t.sinCuota++;
+    return fila(m, cuota, usados, esperado);
   });
-  $('#subCuadre').textContent = `Vales entregados desde ${D.inicio ? fCorta(D.inicio) : 'el inicio'} contra los vales físicos asignados a cada mercado`
+  $('#subCuadre').textContent = `Vales entregados desde ${D.inicio ? fCorta(D.inicio) : 'el inicio'} contra los vales físicos asignados a cada mercado · esperado = ${D.meta} por día × ${nDias} día${nDias === 1 ? '' : 's'} de trabajo (lunes a sábado, hoy incluido)${D.fin ? ` · cierre ${fCorta(D.fin)}` : ''}`
     + (t.sinCuota ? ` · falta cargar la cuota de ${t.sinCuota} mercado${t.sinCuota === 1 ? '' : 's'}` : '');
-  $('#tCuadre').innerHTML = `<thead><tr><th>Mercado</th><th class="n">Cuota (vales físicos)</th><th class="n">Entregados</th><th class="n">Saldo</th><th class="n">Consumo</th></tr></thead>
-    <tbody>${rows.join('')}</tbody><tfoot>${fila('', t.sinCuota ? 0 : t.c, t.u, true)}</tfoot>`;
+  $('#tCuadre').innerHTML = `<thead><tr><th>Mercado</th><th class="n">Cuota (vales físicos)</th><th class="n" title="Lo que debería haber salido a la fecha según la meta diaria">Esperado a hoy</th><th class="n">Entregados</th><th class="n">vs esperado</th><th class="n">Saldo</th><th class="n">Consumo</th></tr></thead>
+    <tbody>${rows.join('')}</tbody><tfoot>${fila('', t.sinCuota ? 0 : t.c, t.u, t.e, true)}</tfoot>`;
 }
 function listaInc(I, P) {
   const obs = P.filter(p => p.observaciones || p.validacion === 'Observado' || p.alertas).map(p => ({
