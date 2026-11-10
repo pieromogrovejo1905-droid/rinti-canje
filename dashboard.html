@@ -126,6 +126,9 @@
   .valbox .bok{background:var(--ok);color:#fff} .valbox .bobs{background:var(--err);color:#fff} .valbox .bpen{background:#fff;border:1px solid var(--line);color:var(--ink2)}
   .valbox input{font:inherit;width:100%;padding:9px 10px;border:1px solid #cfd3ea;border-radius:10px;margin-top:8px}
   body.cliente .solo-int{display:none!important}
+  table.efe th,table.efe td{text-align:center;white-space:nowrap}
+  table.efe th:first-child,table.efe td:first-child{text-align:left}
+  table.efe td.pc{font-weight:700;color:#1c1c1e}
   @media print{
     body{background:#fff}
     .filters,.noprint,.live{display:none!important}
@@ -159,6 +162,12 @@
 
 <main>
   <p class="print-only" id="printHdr"></p>
+  <section class="card solo-int" id="secEfectivos">
+    <h2>Canjes efectivos</h2>
+    <div class="sub" id="subEfectivos"></div>
+    <div class="tw"><table id="tEfectivos" class="efe"></table></div>
+  </section>
+
   <section class="kpis" id="kpis"></section>
 
   <section class="grid2">
@@ -417,6 +426,7 @@ function pintar() {
     ...(INTERNO ? [kpi('Por validar', fmt(canjes.filter(p => !p.validacion || p.validacion === 'Pendiente').length), '', `canjes sin revisar · ${fmt(canjes.filter(p => p.validacion === 'Válido').length)} válidos · ${fmt(obs)} observados`)] : []),
   ].join('');
 
+  if (INTERNO) tablaEfectivos();
   graficoDia(P, dias, imp);
   graficoHora(canjes);
   tablaEquipo();
@@ -547,6 +557,36 @@ function tablaMercado(P, A, I, dias) {
   $('#subMercado').textContent = `Meta: ${D.meta} canjes por impulsadora por día` + (dias.length > 1 ? ` · ${dias.length} días de operación: el avance compara el promedio diario con la meta` : '');
   $('#tMercado').innerHTML = `<thead><tr><th>Mercado</th><th class="n" title="Sacos Ricocan y/o Ricocat para 1 vale">Sacos x vale</th><th class="n">Asistencia</th><th class="n">Pedidos</th><th class="n">Sacos Ricocan</th><th class="n">Sacos Ricocat</th><th class="n">Canjes</th>${dias.length > 1 ? '<th class="n">Prom. / día</th>' : ''}<th class="n">Vales</th><th class="n">Meta diaria</th><th class="n">Avance</th>${INTERNO ? '<th class="n">Incid.</th>' : ''}</tr></thead>
     <tbody>${rows.join('')}</tbody>${mercados.length > 1 ? `<tfoot>${fila('Total', '', tot)}</tfoot>` : ''}`;
+}
+// Tabla que pidieron supervisores y coordinador: canjes por mercado y día desde el día 1 efectivo.
+// No depende de los filtros de arriba.
+const ORDEN_EFECTIVOS = ['Caquetá', 'Unicachi Norte Minorista', 'Fiori', 'Mercado Productores', 'Huamantanga', 'Unicachi Norte Mayorista', 'Parada', 'Unicachi Sur', 'Ciudad de Dios'];
+function tablaEfectivos() {
+  const ini = C.INICIO_EFECTIVO || D.inicio || hoy();
+  const fin = D.fin && D.fin < hoy() ? D.fin : hoy();
+  const fechas = [];
+  for (let f = ini; f <= fin; f = addDias(f, 1)) fechas.push(f);
+  if (!fechas.length) fechas.push(ini);
+  const mercados = [...ORDEN_EFECTIVOS.filter(m => D.mercados.includes(m)), ...D.mercados.filter(m => !ORDEN_EFECTIVOS.includes(m))];
+  const nD = fechas.length, ult = fechas[nD - 1];
+  const rows = mercados.map(m => {
+    const meta = D.meta * impulsadorasPorMercado(m);
+    const cnt = fechas.map(f => D.pedidos.filter(p => p._canje && p.mercado === m && p.fecha === f).length);
+    const acum = cnt.reduce((a, b) => a + b, 0);
+    return { m, meta, cnt, alc: pct(cnt[nD - 1], meta), acu: pct(acum, meta * nD) };
+  });
+  const tMeta = rows.reduce((s, r) => s + r.meta, 0);
+  const tCnt = fechas.map((_, i) => rows.reduce((s, r) => s + r.cnt[i], 0));
+  const tot = { alc: pct(tCnt[nD - 1], tMeta), acu: pct(tCnt.reduce((a, b) => a + b, 0), tMeta * nD) };
+  // Color tipo Excel: rojo el más bajo, verde el más alto de cada columna (100% o más siempre verde)
+  const escala = vals => { const mn = Math.min(...vals), mx = Math.max(...vals); return v => v >= 100 ? 120 : mx === mn ? (v > 0 ? 120 : 0) : (v - mn) / (mx - mn) * 120; };
+  const all = [...rows.map(r => r.alc), tot.alc], allA = [...rows.map(r => r.acu), tot.acu];
+  const hA = escala(all), hB = escala(allA);
+  const celda = (v, h) => `<td class="pc" style="background:hsl(${Math.round(h(v))},68%,70%)">${v}%</td>`;
+  $('#subEfectivos').textContent = `Día 1 = ${fCorta(ini)} · Día ${nD} = ${ult === hoy() ? 'hoy, en curso' : fCorta(ult)} · Meta: ${D.meta} vales por impulsadora por día`;
+  $('#tEfectivos').innerHTML = `<thead><tr><th>Mercado</th><th>Vales x día</th>${fechas.map((f, i) => `<th title="${fCorta(f)}">Día ${i + 1}<div style="font-weight:400;color:var(--muted);font-size:11px">${fCorta(f)}</div></th>`).join('')}<th>Alcance día ${nD}</th><th>Acumulado</th></tr></thead>
+    <tbody>${rows.map(r => `<tr><td><b>${esc(r.m)}</b></td><td>${r.meta}</td>${r.cnt.map(c => `<td><b>${c}</b></td>`).join('')}${celda(r.alc, hA)}${celda(r.acu, hB)}</tr>`).join('')}</tbody>
+    <tfoot><tr><td>Total</td><td>${tMeta}</td>${tCnt.map(c => `<td>${c}</td>`).join('')}${celda(tot.alc, hA)}${celda(tot.acu, hB)}</tr></tfoot>`;
 }
 function tablaCuadre(CI) {
   const rows = CI.slice().sort((a, b) => (b.fecha + b.hora).localeCompare(a.fecha + a.hora)).map(c => {
