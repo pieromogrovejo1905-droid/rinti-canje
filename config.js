@@ -12,7 +12,7 @@ window.RINTI = {
     'Fiori': 22,
     'Unicachi Sur': 17,
     'Parada': 17,
-    'Unicachi Norte Mayorista': 15,
+    'Unicachi Norte Mayorista': 10,
     'Unicachi Norte Minorista': 10,
     'Huamantanga': 10,
     'Ciudad de Dios': 10,
