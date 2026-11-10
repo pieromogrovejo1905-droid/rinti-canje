@@ -10,8 +10,8 @@ window.RINTI = {
   SACOS_POR_MERCADO: {
     'Mercado Productores': 30,
     'Fiori': 22,
-    'Unicachi Sur': 17,
-    'Parada': 17,
+    'Unicachi Sur': 10,
+    'Parada': 10,
     'Unicachi Norte Mayorista': 10,
     'Unicachi Norte Minorista': 10,
     'Huamantanga': 10,
