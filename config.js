@@ -9,7 +9,7 @@ window.RINTI = {
   // El backend manda la versión vigente; esta copia se usa sin conexión.
   SACOS_POR_MERCADO: {
     'Mercado Productores': 30,
-    'Fiori': 22,
+    'Fiori': 15,
     'Unicachi Sur': 10,
     'Parada': 10,
     'Unicachi Norte Mayorista': 10,

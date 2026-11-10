@@ -71,7 +71,7 @@ ok('9 usuarios por mercado + 2 supervisores + coordinador', eq.length === 12 && 
 const coord = eq.find(e => e.usuario === 'coordinador'), sup2 = eq.find(e => e.usuario === 'supervisor2');
 ok('coordinador y supervisor2 con su rol', coord && coord.rol === 'coordinador' && coord.nombre === 'Coordinador de Trade' && sup2 && sup2.rol === 'supervisor');
 ok('usuarios con nombre de mercado', fiori.usuario === 'fiori' && prod.usuario === 'productores' && sup.usuario === 'supervisor');
-ok('config publica sin claves y con reglas', (() => { const c = get({ action: 'config' }); return !JSON.stringify(c).match(/contrasena|cliente_clave|"pin"/) && c.sacos_por_mercado['Fiori'] === 22; })());
+ok('config publica sin claves y con reglas', (() => { const c = get({ action: 'config' }); return !JSON.stringify(c).match(/contrasena|cliente_clave|"pin"/) && c.sacos_por_mercado['Fiori'] === 15; })());
 ok('login cliente con espacios', post({ tipo: 'login_cliente', usuario: ' Rinti ', clave: cfg.cliente_clave + ' \n' }).k === props.DASH_TOKEN);
 ok('login cliente malo', post({ tipo: 'login_cliente', usuario: 'rinti', clave: 'x' }).code === 'auth');
 const F = { usuario: 'FIORI', clave: fiori.contrasena + ' ' };
@@ -81,10 +81,10 @@ ok('login con clave de otro mercado', post({ usuario: 'fiori', clave: cdd.contra
 const img = 'data:image/jpeg;base64,AAAA';
 ok('asistencia queda en su mercado aunque mande otro', post({ ...F, tipo: 'asistencia', id: 'a1', mercado: 'Parada', marca: 'Entrada', foto: img }).ok && sheets.Asistencia.rows[1][5] === 'Fiori');
 const canje = (extra) => ({ ...F, tipo: 'pedido', cliente: 'Bodega', tipo_comprobante: 'Boleta', foto_comprobante: img, foto_entrega: img, firma: img, compra_lima: true, consentimiento: true, lat: -12, ...extra });
-r = post(canje({ id: 'p1', ricocan: 10, ricocat: 11, n_comprobante: 'B1', codigos: ['1000001'], dni: '12345678' }));
-ok('Fiori 21 sacos no es canje (pide 22)', r.ok && r.vales === 0, JSON.stringify(r));
-r = post(canje({ id: 'p2', ricocan: 10, ricocat: 12, n_comprobante: 'B2', codigos: ['1000002'], dni: '12345678' }));
-ok('Fiori 22 sacos mixtos = 1 vale', r.ok && r.vales === 1, JSON.stringify(r));
+r = post(canje({ id: 'p1', ricocan: 7, ricocat: 7, n_comprobante: 'B1', codigos: ['1000001'], dni: '12345678' }));
+ok('Fiori 14 sacos no es canje (pide 15)', r.ok && r.vales === 0, JSON.stringify(r));
+r = post(canje({ id: 'p2', ricocan: 7, ricocat: 8, n_comprobante: 'B2', codigos: ['1000002'], dni: '12345678' }));
+ok('Fiori 15 sacos mixtos = 1 vale', r.ok && r.vales === 1, JSON.stringify(r));
 r = post(canje({ id: 'p3', ricocan: 40, n_comprobante: 'B3', codigos: ['1000003'], dni: '12345678' }));
 ok('mismo DNI el mismo día: rechazado', r.code === 'val' && /ya recibió un vale hoy/.test(r.error), JSON.stringify(r));
 r = post(canje({ id: 'p4', ricocan: 34, n_comprobante: 'B4', codigos: ['1000004', '1000005'], dni: '87654321' }));
@@ -110,7 +110,7 @@ ok('cierre de impulsadora: no', post({ ...F, tipo: 'cierre', id: 'c2', mercado: 
 const d = get({ action: 'data', k: props.DASH_TOKEN });
 const p2 = d.pedidos.find(p => p.id === 'p2');
 ok('dashboard: DNI enmascarado y sin celular', p2.dni === '•••••678' && !d.pedidos.some(p => 'celular' in p), p2.dni);
-ok('dashboard: sacos requeridos guardados', p2.sacos_requeridos === '22' && p2.es_canje === 'SÍ');
+ok('dashboard: sacos requeridos guardados', p2.sacos_requeridos === '15' && p2.es_canje === 'SÍ');
 ok('dashboard: reglas en la respuesta', d.sacos_por_mercado['Mercado Productores'] === 30);
 ok('dashboard: sin token no hay datos', get({ action: 'data', k: 'x' }).code === 'auth');
 // ---- coordinador, panel y regla del vale ----
@@ -123,7 +123,7 @@ ok('coordinador hace cierre', post({ ...K('coordinador'), tipo: 'cierre', id: 'c
 r = post({ ...K('coordinador'), tipo: 'panel' });
 const fi = r.filas && r.filas.find(f => f.mercado === 'Fiori');
 ok('panel: 9 mercados, solo impulsadoras', r.ok && r.filas.length === 9 && !r.filas.some(f => /supervisor|coordinador/i.test(f.nombre)), JSON.stringify(r).slice(0, 200));
-ok('panel: Fiori con entrada y canjes', fi && fi.entrada && fi.canjes === 2 && fi.pedidos === 3 && fi.sacos === 21 + 22 + 34 && fi.ultima, JSON.stringify(fi));
+ok('panel: Fiori con entrada y canjes', fi && fi.entrada && fi.canjes === 2 && fi.pedidos === 3 && fi.sacos === 14 + 15 + 34 && fi.ultima, JSON.stringify(fi));
 ok('panel: impulsadora no entra', post({ ...K('fiori'), tipo: 'panel' }).code === 'val');
 ok('vale: letras rechazadas', /7 números \(sin letras\)/.test(post(canje({ ...K('fiori'), id: 'v1', ricocan: 22, n_comprobante: 'BV1', codigos: ['AB12345'], dni: '55556666' })).error));
 ok('vale: 6 dígitos rechazado', /escribiste 6/.test(post({ ...K('fiori'), tipo: 'verificar_vale', codigo: '123456' }).mensaje));
