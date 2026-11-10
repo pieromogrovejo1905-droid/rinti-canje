@@ -197,8 +197,8 @@
 
   <section class="grid2" id="secCuadre">
     <div class="card">
-      <h2>Cuadre de pavos (cierre del supervisor)</h2>
-      <div class="sub">Pavos entregados según el supervisor vs. vales registrados en el sistema</div>
+      <h2>Kardex de vales físicos</h2>
+      <div class="sub" id="subCuadre"></div>
       <div class="tw scroll"><table id="tCuadre"></table></div>
     </div>
     <div class="card solo-int">
@@ -433,7 +433,7 @@ function pintar() {
   graficoHora(canjes);
   tablaEquipo();
   tablaMercado(P, A, I, dias);
-  tablaCuadre(CIE);
+  tablaCuadre();
   if (INTERNO) listaInc(I, P);
   $('#secCuadre').style.gridTemplateColumns = INTERNO ? '' : '1fr';
   galeria(canjes);
@@ -590,15 +590,29 @@ function tablaEfectivos() {
     <tbody>${rows.map(r => `<tr><td><b>${esc(r.m)}</b></td><td>${r.meta}</td>${r.cnt.map(c => `<td><b>${c}</b></td>`).join('')}${celda(r.alc, hA)}${celda(r.acu, hB)}</tr>`).join('')}</tbody>
     <tfoot><tr><td>Total</td><td>${tMeta}</td>${tCnt.map(c => `<td>${c}</td>`).join('')}${celda(tot.alc, hA)}${celda(tot.acu, hB)}</tr></tfoot>`;
 }
-function tablaCuadre(CI) {
-  const rows = CI.slice().sort((a, b) => (b.fecha + b.hora).localeCompare(a.fecha + a.hora)).map(c => {
-    const sis = D.pedidos.filter(p => p.fecha === c.fecha && p.mercado === c.mercado).reduce((s, p) => s + p._vales, 0);
-    const dif = c._ent - sis;
-    return `<tr><td>${fCorta(c.fecha)}</td><td>${esc(c.mercado)}</td><td class="n">${c._ini}</td><td class="n">${c._ent}</td><td class="n">${c._ini - c._ent}</td><td class="n">${sis}</td>
-      <td class="n">${dif === 0 ? '<span class="st ok">✔ Cuadra</span>' : `<span class="st err">▲ ${dif > 0 ? '+' : ''}${dif}</span>`}</td></tr>`;
+// Kardex: cuota de vales físicos por mercado (hoja Config, filas cuota_vales_<mercado>) vs vales ya entregados.
+// Es el total de la campaña, no depende de los filtros de fecha.
+function tablaCuadre() {
+  const cfg = D.config || {};
+  const mercados = [...ORDEN_EFECTIVOS.filter(m => D.mercados.includes(m)), ...D.mercados.filter(m => !ORDEN_EFECTIVOS.includes(m))];
+  const t = { c: 0, u: 0, sinCuota: 0 };
+  const fila = (m, cuota, usados, foot) => {
+    const tiene = cuota > 0, p = tiene ? pct(usados, cuota) : 0;
+    const saldo = tiene ? cuota - usados : null;
+    return `<tr><td>${foot ? 'Total' : `<b>${esc(m)}</b>`}</td><td class="n">${tiene ? fmt(cuota) : '<span style="color:var(--muted)">—</span>'}</td><td class="n"><b>${fmt(usados)}</b></td>
+      <td class="n">${saldo == null ? '<span style="color:var(--muted)">—</span>' : saldo < 0 ? `<span class="st err">${fmt(saldo)}</span>` : fmt(saldo)}</td>
+      <td class="n">${tiene ? `<div class="mini"><span>${p}%</span><span class="b"><i style="width:${Math.min(100, p)}%"></i></span></div>` : '<span style="color:var(--muted)">sin cuota</span>'}</td></tr>`;
+  };
+  const rows = mercados.map(m => {
+    const cuota = num(cfg['cuota_vales_' + m]);
+    const usados = D.pedidos.filter(p => p.mercado === m).reduce((s, p) => s + p._vales, 0);
+    t.c += cuota; t.u += usados; if (!cuota) t.sinCuota++;
+    return fila(m, cuota, usados);
   });
-  $('#tCuadre').innerHTML = `<thead><tr><th>Fecha</th><th>Mercado</th><th class="n">Inicio</th><th class="n">Entregados</th><th class="n">Saldo</th><th class="n">Vales sistema</th><th class="n">Diferencia</th></tr></thead>
-    <tbody>${rows.join('') || '<tr><td colspan="7" class="empty">Aún no hay cierres en este periodo</td></tr>'}</tbody>`;
+  $('#subCuadre').textContent = `Vales entregados desde ${D.inicio ? fCorta(D.inicio) : 'el inicio'} contra los vales físicos asignados a cada mercado`
+    + (t.sinCuota ? ` · falta cargar la cuota de ${t.sinCuota} mercado${t.sinCuota === 1 ? '' : 's'}` : '');
+  $('#tCuadre').innerHTML = `<thead><tr><th>Mercado</th><th class="n">Cuota (vales físicos)</th><th class="n">Entregados</th><th class="n">Saldo</th><th class="n">Consumo</th></tr></thead>
+    <tbody>${rows.join('')}</tbody><tfoot>${fila('', t.sinCuota ? 0 : t.c, t.u, true)}</tfoot>`;
 }
 function listaInc(I, P) {
   const obs = P.filter(p => p.observaciones || p.validacion === 'Observado' || p.alertas).map(p => ({

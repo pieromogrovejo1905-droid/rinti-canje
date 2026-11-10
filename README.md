@@ -22,7 +22,7 @@ Las reglas están en `SACOS_POR_MERCADO` (apps-script/Code.gs, que manda) y en `
 |---|---|---|
 | `index.html` | Todos | Inicio con 3 botones: Promotores, Back Office (interno Free) y Equipo Rinti (cliente) |
 | `app.html` | Impulsadoras y supervisor (celular) | Asistencia con selfie y GPS, pedidos y canjes (código de vale, boleta, firma, foto), incidencias y cierre de pavos |
-| `dashboard.html` | Cliente (Rinti), entra con usuario y contraseña | Avance en vivo contra la meta, por mercado e impulsadora, asistencia, cuadre de pavos, incidencias, galería de evidencias, CSV y PDF |
+| `dashboard.html` | Cliente (Rinti), entra con usuario y contraseña | Avance en vivo contra la meta, por mercado e impulsadora, asistencia, kardex de vales físicos, incidencias, galería de evidencias, CSV y PDF |
 | `apps-script/Code.gs` | Backend | Guarda todo en Google Sheets y las fotos en Google Drive |
 
 Sin `API_URL` configurada, ambas páginas funcionan en **modo demo** (la app no envía nada y el dashboard muestra datos ficticios).
@@ -73,7 +73,7 @@ Sin `API_URL` configurada, ambas páginas funcionan en **modo demo** (la app no 
 - **Regla del vale**: el código son **exactamente 7 números** y cada vale se usa una vez. Si cargas los códigos impresos en la pestaña **Talonario** (columna `codigo`, y `mercado` si cada mercado tiene su talonario), solo se aceptan esos códigos.
 - **Acceso del cliente**: pestaña **Config**, filas `cliente_usuario` y `cliente_clave`.
 - **Dos dashboards**:
-  - **Cliente** (`dashboard.html`): avance, canjes, sacos, asistencia (cada impulsadora solo como Activa / Inactiva), cuadre de pavos y evidencias. No muestra incidencias, observaciones, tardanzas, celulares ni el DNI completo.
+  - **Cliente** (`dashboard.html`): avance, canjes, sacos, asistencia (cada impulsadora solo como Activa / Inactiva), kardex de vales físicos y evidencias. No muestra incidencias, observaciones, tardanzas, celulares ni el DNI completo.
   - **Interno Free** (`interno.html`): todo lo anterior más incidencias, observaciones, horas de entrada y salida, DNI completo y la **validación de cada canje** (Válido / Observado con motivo) desde la foto del vale. Se entra con el usuario de supervisor o coordinador.
 - Las contraseñas se pueden cambiar escribiendo en la hoja; aplica al instante.
 - En **Config** pon `fecha_inicio`, `fecha_fin` y `hora_ingreso`.
