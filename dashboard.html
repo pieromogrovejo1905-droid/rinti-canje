@@ -353,6 +353,8 @@ function normalizar() {
   D.reglas = Object.assign({}, C.SACOS_POR_MERCADO, D.sacos_por_mercado || {});
   D.inicio = cfg.fecha_inicio || '';
   D.fin = cfg.fecha_fin || '';
+  // Lo anterior a la fecha de inicio fueron pruebas: se oculta en el dashboard (sigue en el Sheet)
+  if (D.inicio) ['pedidos', 'asistencia', 'incidencias', 'cierres'].forEach(k => { D[k] = (D[k] || []).filter(r => !r.fecha || r.fecha >= D.inicio); });
   D.pedidos.forEach(p => {
     p._rc = num(p.sacos_ricocan); p._rt = num(p.sacos_ricocat); p._tot = p._rc + p._rt;
     p._kg = num(p.kg_total) || p._rc * C.KG.ricocan + p._rt * C.KG.ricocat;
