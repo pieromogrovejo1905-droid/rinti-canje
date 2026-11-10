@@ -175,7 +175,7 @@
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
-    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión 8</p>
+    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión 10</p>
   </section>
 
   <!-- HOME -->
@@ -252,13 +252,13 @@
     </div>
 
     <div class="card">
-      <h3 style="margin-top:0">3 · Boleta o factura</h3>
+      <h3 style="margin-top:0">3 · Boleta, factura o nota de venta</h3>
       <label class="f" for="pTipoComp" style="margin-top:0">Comprobante</label>
       <div class="row">
-        <select id="pTipoComp" style="flex:0 0 40%"><option>Boleta</option><option>Factura</option></select>
+        <select id="pTipoComp" style="flex:0 0 40%"><option>Boleta</option><option>Factura</option><option>Nota de venta</option></select>
         <input id="pNComp" type="text" placeholder="Serie y número" autocapitalize="characters">
       </div>
-      <label class="f"><span class="foto-n">1</span>Foto de la boleta o factura <span class="opt" id="pCompOpt">(opcional)</span></label>
+      <label class="f"><span class="foto-n">1</span>Foto del comprobante (boleta, factura o nota de venta) <span class="opt" id="pCompOpt">(opcional)</span></label>
       <label class="foto" data-key="foto_comprobante"><input type="file" accept="image/*" capture="environment"><span class="ph">🧾</span><span class="t">Tomar foto de la boleta<small>Que se lean los sacos, la fecha y el total</small></span></label>
     </div>
 
@@ -754,8 +754,8 @@ $('#pEnviar').onclick = async () => {
   if (vales) {
     if (!dni) return e('Falta el DNI del cliente');
     if (dniUsado) return e('Este DNI ya recibió un vale hoy. Máximo 1 vale por DNI al día.');
-    if (!$('#pNComp').value.trim()) return e('Falta el número de boleta o factura');
-    if (!foto('vPedido', 'foto_comprobante')) return e('Falta la foto 1: la boleta o factura');
+    if (!$('#pNComp').value.trim()) return e('Falta el número del comprobante (boleta, factura o nota de venta)');
+    if (!foto('vPedido', 'foto_comprobante')) return e('Falta la foto 1: la boleta, factura o nota de venta');
     if (!codigos[0]) return e('Falta el código del vale');
     if (!/^\d{7}$/.test(codigos[0])) return e('El código del vale tiene 7 números');
     if (valeMalo) return e(valeMalo);

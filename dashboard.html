@@ -604,7 +604,7 @@ function abrir(id) {
     <dt>Vales</dt><dd>${p._vales}</dd><dt>Compra en Lima</dt><dd>${esc(p.compra_lima)}</dd>
     <dt>Mecánica</dt><dd>${esc(p.cumple_mecanica)}${INTERNO && p.alertas ? ' · ' + esc(p.alertas) : ''}</dd>
     <dt>Validación</dt><dd>${valTxt(p)}</dd>${INTERNO && p.observaciones ? `<dt>Observaciones</dt><dd>${esc(p.observaciones)}</dd>` : ''}${INTERNO && p.celular ? `<dt>Celular</dt><dd>${esc(p.celular)}</dd>` : ''}</dl>
-    <div class="imgs">${img(p.foto_comprobante, 'Foto 1 · Boleta / factura')}${img(p.foto_entrega, 'Foto 2 · Cliente con el vale')}${img(p.firma, 'Firma del cliente')}</div>
+    <div class="imgs">${img(p.foto_comprobante, 'Foto 1 · Boleta / factura / nota de venta')}${img(p.foto_entrega, 'Foto 2 · Cliente con el vale')}${img(p.firma, 'Firma del cliente')}</div>
     ${INTERNO && p._canje ? `<div class="valbox"><b>Validar este canje</b><div style="color:var(--muted);font-size:13px">Revisa las fotos: boleta con los sacos y el cliente con el vale.</div>
       <input id="vNota" placeholder="Motivo (obligatorio si es Observado)">
       <div class="acts"><button class="bok" data-val="Válido">✔ Válido</button><button class="bobs" data-val="Observado">✕ Observado</button>${p.validacion && p.validacion !== 'Pendiente' ? '<button class="bpen" data-val="Pendiente">Volver a pendiente</button>' : ''}</div>
@@ -696,7 +696,7 @@ function demo() {
           id: 'p' + n++, fecha: f, hora: `${String(hh).padStart(2, '0')}:${String(Math.floor(rnd() * 60)).padStart(2, '0')}`, impulsadora: e.nombre, mercado: e.mercado,
           puesto: /Productores/.test(e.mercado) ? pick(C.PUESTOS_PRODUCTORES).split(' · ')[0] : 'Pto. ' + Math.floor(rnd() * 300),
           cliente: pick(['Bodega Rosita', 'Comercial Ayala', 'Distribuidora Paola', 'Market El Sol', 'Veterinaria Max', 'Inversiones Luz', 'Agro Pet Lima', 'Comercial Huanca']),
-          tipo_comprobante: pick(['Boleta', 'Factura']), n_comprobante: 'B001-' + (20000 + n), sacos_ricocan: rc, sacos_ricocat: rt,
+          tipo_comprobante: pick(['Boleta', 'Factura', 'Nota de venta']), n_comprobante: 'B001-' + (20000 + n), sacos_ricocan: rc, sacos_ricocat: rt,
           dni: vales ? '•••••' + String(100 + Math.floor(rnd() * 900)) : '', sacos_requeridos: req,
           es_canje: vales ? 'SÍ' : 'NO', compra_lima: vales ? 'SÍ' : '', vales, codigos_vale: cod.join(', '), cumple_mecanica: vales ? (rnd() < 0.03 ? 'REVISAR' : 'SÍ') : 'N/A',
           alertas: '', validacion: vales ? (obs ? 'Observado' : d > 1 ? 'Válido' : 'Pendiente') : '', observaciones: obs ? 'Boleta ilegible, se pidió nueva foto' : '',
