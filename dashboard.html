@@ -162,7 +162,7 @@
 
 <main>
   <p class="print-only" id="printHdr"></p>
-  <section class="card solo-int" id="secEfectivos">
+  <section class="card" id="secEfectivos">
     <h2>Canjes efectivos</h2>
     <div class="sub" id="subEfectivos"></div>
     <div class="tw"><table id="tEfectivos" class="efe"></table></div>
@@ -426,7 +426,7 @@ function pintar() {
     ...(INTERNO ? [kpi('Por validar', fmt(canjes.filter(p => !p.validacion || p.validacion === 'Pendiente').length), '', `canjes sin revisar · ${fmt(canjes.filter(p => p.validacion === 'Válido').length)} válidos · ${fmt(obs)} observados`)] : []),
   ].join('');
 
-  if (INTERNO) tablaEfectivos();
+  tablaEfectivos();
   graficoDia(P, dias, imp);
   graficoHora(canjes);
   tablaEquipo();

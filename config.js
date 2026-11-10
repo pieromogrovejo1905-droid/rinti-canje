@@ -21,7 +21,7 @@ window.RINTI = {
   KG: { ricocan: 22, ricocat: 15 },
   META_DIARIA: 6,              // se reemplaza por la hoja Config si existe
   IMPULSADORAS_PLANIFICADAS: 9,
-  // Día 1 de la tabla "Canjes efectivos" del dashboard interno (antes fueron pruebas)
+  // Día 1 de la tabla "Canjes efectivos" de los dashboards (antes fueron pruebas)
   INICIO_EFECTIVO: '2026-11-09',
 
   MERCADOS: [
