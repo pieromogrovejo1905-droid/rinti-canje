@@ -12,7 +12,7 @@ Mecánica: el cliente compra **N sacos (Ricocan 22 kg y/o Ricocat 15 kg, se pued
 
 | Mercado | Sacos para 1 vale |
 |---|---|
-| Mercado Productores | 30 |
+| Mercado Productores | 20 |
 | Fiori | 15 |
 | Unicachi Sur, Parada, Unicachi Norte Mayorista, Unicachi Norte Minorista, Huamantanga, Ciudad de Dios, Caquetá | 10 |
 
