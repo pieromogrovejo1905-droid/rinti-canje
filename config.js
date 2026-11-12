@@ -18,7 +18,7 @@ window.RINTI = {
     'Ciudad de Dios': 10,
     'Caquetá': 10,
   },
-  KG: { ricocan: 22, ricocat: 15, ricocan15: 15, ricocat9: 9 },
+  KG: { ricocan: 22, ricocat: 15 },
   META_DIARIA: 6,              // se reemplaza por la hoja Config si existe
   IMPULSADORAS_PLANIFICADAS: 9,
   // Día 1 de la tabla "Canjes efectivos" de los dashboards (antes fueron pruebas)

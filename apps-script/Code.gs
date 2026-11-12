@@ -8,9 +8,9 @@
  */
 
 const TZ = 'America/Lima';
-const KG = { ricocan: 22, ricocat: 15, ricocan15: 15, ricocat9: 9 };
+const KG = { ricocan: 22, ricocat: 15 };
 const P = PropertiesService.getScriptProperties();
-const VERSION_ESQUEMA = '5';
+const VERSION_ESQUEMA = '4';
 
 const MERCADOS = [
   'Fiori', 'Unicachi Norte Mayorista', 'Unicachi Norte Minorista', 'Unicachi Sur',
@@ -49,7 +49,7 @@ const ESQUEMA = {
     'tipo_comprobante', 'n_comprobante', 'sacos_ricocan', 'sacos_ricocat', 'sacos_total', 'kg_total',
     'es_canje', 'vales', 'codigos_vale', 'foto_comprobante', 'foto_entrega', 'firma', 'compra_lima',
     'consentimiento', 'cumple_mecanica', 'alertas', 'observaciones', 'validacion', 'lat', 'lng',
-    'dni', 'sacos_requeridos', 'validado_por', 'validado_en', 'sacos_ricocan_15kg', 'sacos_ricocat_9kg'],
+    'dni', 'sacos_requeridos', 'validado_por', 'validado_en'],
   Incidencias: ['id', 'registrado', 'fecha', 'hora', 'impulsadora', 'mercado', 'tipo_incidencia', 'detalle', 'foto', 'lat', 'lng'],
   Cierres: ['id', 'registrado', 'fecha', 'hora', 'supervisor', 'mercado', 'pavos_inicio', 'pavos_entregados',
     'pavos_saldo', 'vales_reportados', 'observaciones'],
@@ -287,10 +287,7 @@ function asistencia_(b, u) {
 function pedido_(b, u) {
   if (existeId_('Pedidos', b.id)) return { ok: true, duplicado: true };
 
-  // 4 presentaciones: Ricocan 22 y 15 kg, Ricocat 15 y 9 kg. Todas cuentan igual para el vale.
-  // sacos_ricocan / sacos_ricocat guardan el total de cada marca; las columnas _15kg / _9kg, el detalle.
-  const rc22 = entero_(b.ricocan), rc15 = entero_(b.ricocan15), rt15 = entero_(b.ricocat), rt9 = entero_(b.ricocat9);
-  const rc = rc22 + rc15, rt = rt15 + rt9, total = rc + rt;
+  const rc = entero_(b.ricocan), rt = entero_(b.ricocat), total = rc + rt;
   const mercado = mercadoDe_(b, u);
   if (total <= 0) throw val_('Indica la cantidad de sacos');
   if (!limpio_(b.cliente)) throw val_('Falta el nombre del cliente o negocio');
@@ -341,9 +338,7 @@ function pedido_(b, u) {
       id: b.id, registrado: ahora_(), fecha: t.fecha, hora: t.hora, impulsadora: u.nombre, mercado: mercado,
       puesto: limpio_(b.puesto), cliente: limpio_(b.cliente), celular: limpio_(b.celular),
       tipo_comprobante: limpio_(b.tipo_comprobante), n_comprobante: nComp,
-      sacos_ricocan: rc, sacos_ricocat: rt, sacos_total: total,
-      kg_total: rc22 * KG.ricocan + rc15 * KG.ricocan15 + rt15 * KG.ricocat + rt9 * KG.ricocat9,
-      sacos_ricocan_15kg: rc15, sacos_ricocat_9kg: rt9,
+      sacos_ricocan: rc, sacos_ricocat: rt, sacos_total: total, kg_total: rc * KG.ricocan + rt * KG.ricocat,
       es_canje: esCanje ? 'SÍ' : 'NO', vales: vales, codigos_vale: codigos.join(', '),
       foto_comprobante: fotoComp, foto_entrega: fotoEnt, firma: firma,
       compra_lima: b.compra_lima ? 'SÍ' : 'NO', consentimiento: b.consentimiento ? 'SÍ' : 'NO',
