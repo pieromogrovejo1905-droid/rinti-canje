@@ -36,7 +36,7 @@ window.RINTI = {
     'Mercado Productores',
   ],
 
-  // En Mercado Productores no se recorre: solo estos 8 puestos.
+  // En Mercado Productores no se recorre: solo estos puestos.
   PUESTOS_PRODUCTORES: [
     'Comercial Vega (bróker) · Pje. San Francisco de Asís, Pto. B38 · Directo',
     'Comercial Vega 2.ª tienda · Pje. San Francisco de Asís, Pto. 8 · Directo',
@@ -46,6 +46,9 @@ window.RINTI = {
     'Gregorio Riveros · Pje. D, Pto. 6 · Distribuidor AC',
     'Rivadeneyra Paucar · Pje. Sr. de los Milagros, Pto. 51 · Distribuidor AC',
     'Riveros Mescua · Pje. San Francisco, Pto. 27 · Distribuidor AC',
+    'Lopes Lopes Merci · Pje. B, Pto. 45-46',
+    'Inversiones Juanito · Pje. Productores, Pto. 61',
+    'Criadores Trading · Pje. San Francisco de Asís, Pto. 21-23',
   ],
 
   TIPOS_INCIDENCIA: [
