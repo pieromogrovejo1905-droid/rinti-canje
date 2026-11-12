@@ -360,6 +360,7 @@ function normalizar() {
   if (D.inicio) ['pedidos', 'asistencia', 'incidencias', 'cierres'].forEach(k => { D[k] = (D[k] || []).filter(r => !r.fecha || r.fecha >= D.inicio); });
   D.pedidos.forEach(p => {
     p._rc = num(p.sacos_ricocan); p._rt = num(p.sacos_ricocat); p._tot = p._rc + p._rt;
+    p._rc15 = num(p.sacos_ricocan_15kg); p._rt9 = num(p.sacos_ricocat_9kg); // detalle: parte de _rc / _rt
     p._kg = num(p.kg_total) || p._rc * C.KG.ricocan + p._rt * C.KG.ricocat;
     p._vales = num(p.vales); p._canje = p.es_canje === 'SÍ' || p._vales > 0;
     p._cumple = p._canje && p.cumple_mecanica === 'SÍ' && p.validacion !== 'Observado';
@@ -664,7 +665,7 @@ function abrir(id) {
     <dl class="kv" style="margin-top:14px"><dt>Cliente</dt><dd>${esc(p.cliente)}${p.puesto ? ' · ' + esc(p.puesto) : ''}</dd>${p.dni ? `<dt>DNI</dt><dd>${esc(p.dni)}</dd>` : ''}
     <dt>Sacos pedidos en el mercado</dt><dd>${esc(p.sacos_requeridos || D.reglas[p.mercado] || '')}</dd>
     <dt>Comprobante</dt><dd>${esc(p.tipo_comprobante)} ${esc(p.n_comprobante)}</dd>
-    <dt>Sacos</dt><dd>Ricocan 22 kg: ${p._rc} · Ricocat 15 kg: ${p._rt} · ${fmt(p._kg)} kg</dd>
+    <dt>Sacos</dt><dd>Ricocan 22 kg: ${p._rc - p._rc15}${p._rc15 ? ` · Ricocan 15 kg: ${p._rc15}` : ''} · Ricocat 15 kg: ${p._rt - p._rt9}${p._rt9 ? ` · Ricocat 9 kg: ${p._rt9}` : ''} · ${fmt(p._kg)} kg</dd>
     <dt>Vales</dt><dd>${p._vales}</dd><dt>Compra en Lima</dt><dd>${esc(p.compra_lima)}</dd>
     <dt>Mecánica</dt><dd>${esc(p.cumple_mecanica)}${INTERNO && p.alertas ? ' · ' + esc(p.alertas) : ''}</dd>
     <dt>Validación</dt><dd>${valTxt(p)}</dd>${INTERNO && p.observaciones ? `<dt>Observaciones</dt><dd>${esc(p.observaciones)}</dd>` : ''}${INTERNO && p.celular ? `<dt>Celular</dt><dd>${esc(p.celular)}</dd>` : ''}</dl>
@@ -717,7 +718,7 @@ $('#fBuscar').oninput = e => { F.buscar = e.target.value; tablaDetalle(filtrar(D
 $('#btnMas').onclick = () => { galN += 24; galeria(filtrar(D.pedidos).filter(p => p._canje)); };
 $('#btnPrint').onclick = () => window.print();
 $('#btnCsv').onclick = () => {
-  const cols = ['fecha', 'hora', 'mercado', 'impulsadora', 'puesto', 'cliente', 'dni', 'tipo_comprobante', 'n_comprobante', 'sacos_requeridos', 'sacos_ricocan', 'sacos_ricocat', 'sacos_total', 'kg_total', 'es_canje', 'vales', 'codigos_vale', 'cumple_mecanica', 'validacion', 'alertas', 'observaciones', 'foto_entrega', 'foto_comprobante', 'firma'];
+  const cols = ['fecha', 'hora', 'mercado', 'impulsadora', 'puesto', 'cliente', 'dni', 'tipo_comprobante', 'n_comprobante', 'sacos_requeridos', 'sacos_ricocan', 'sacos_ricocan_15kg', 'sacos_ricocat', 'sacos_ricocat_9kg', 'sacos_total', 'kg_total', 'es_canje', 'vales', 'codigos_vale', 'cumple_mecanica', 'validacion', 'alertas', 'observaciones', 'foto_entrega', 'foto_comprobante', 'firma'];
   const q = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
   const csv = '﻿' + [cols.join(';'), ...filtrar(D.pedidos).map(p => cols.map(c => q(c === 'kg_total' ? p._kg : p[c])).join(';'))].join('\r\n');
   const [a, b] = rango();
