@@ -8,7 +8,7 @@
 # Canje Rinti · Registro de campo y dashboard
 
 Sistema para la campaña **Canje Rinti (Ricocan / Ricocat)**: 9 impulsadoras en 8 mercados + Mercado Productores.
-Mecánica: el cliente compra **N sacos (Ricocan 22 kg y/o Ricocat 15 kg, se pueden sumar)** y recibe **1 vale de pavo Redondos de 7 kg**. **Máximo 1 vale por DNI al día**, aunque compre varias veces. Meta: **6 canjes por impulsadora al día**.
+Mecánica: el cliente compra **N sacos (Ricocan 22 o 15 kg y/o Ricocat 15 o 9 kg, se pueden sumar)** y recibe **1 vale de pavo Redondos de 7 kg**. **Máximo 1 vale por DNI al día**, aunque compre varias veces. Meta: **6 canjes por impulsadora al día**.
 
 | Mercado | Sacos para 1 vale |
 |---|---|

@@ -136,6 +136,11 @@ ok('talonario: vale de otro mercado', /es del mercado Parada/.test(post({ ...K('
 r = post(canje({ ...K('fiori'), id: 'v2', ricocan: 22, n_comprobante: 'BV2', codigos: ['300 0001'], dni: '55556666' }));
 ok('talonario: vale correcto se canjea', r.ok && r.vales === 1 && sheets.Vales.rows.some(v => v[0] === '3000001'), JSON.stringify(r));
 ok('talonario: vale sin mercado sirve en cualquiera', post({ ...K('parada'), tipo: 'verificar_vale', codigo: '3000002' }).valido === true);
+// ---- presentaciones Ricocan 15 kg y Ricocat 9 kg ----
+r = post(canje({ ...K('fiori'), id: 'v3', ricocan15: 8, ricocat9: 7, n_comprobante: 'BV3', codigos: ['3000002'], dni: '66667777' }));
+const v3 = sh('Pedidos').find(p => p.id === 'v3');
+ok('Ricocan 15 kg + Ricocat 9 kg cuentan para el vale', r.ok && r.vales === 1 && v3.sacos_total == 15 && v3.sacos_ricocan == 8 && v3.sacos_ricocat == 7, JSON.stringify(r));
+ok('detalle y kg de las presentaciones nuevas', v3.sacos_ricocan_15kg == 8 && v3.sacos_ricocat_9kg == 7 && v3.kg_total == 8 * 15 + 7 * 9, JSON.stringify(v3).slice(0, 200));
 // ---- dashboards cliente / interno y validación ----
 post({ ...F, tipo: 'incidencia', id: 'i1', tipo_incidencia: 'Otro', detalle: 'algo pasó' });
 const dc = get({ action: 'data', k: props.DASH_TOKEN });

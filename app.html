@@ -175,7 +175,7 @@
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
-    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión 10</p>
+    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión 11</p>
   </section>
 
   <!-- HOME -->
@@ -247,6 +247,12 @@
           <div class="stepper"><button type="button" data-step="pRc" data-d="-1">−</button><input id="pRc" type="number" inputmode="numeric" min="0" value="0"><button type="button" data-step="pRc" data-d="1">+</button></div></div>
         <div><div class="lbl"><img src="img/ricocat.png" alt="Ricocat" style="height:26px;border-radius:6px;vertical-align:middle"> <small>15 kg</small></div>
           <div class="stepper"><button type="button" data-step="pRt" data-d="-1">−</button><input id="pRt" type="number" inputmode="numeric" min="0" value="0"><button type="button" data-step="pRt" data-d="1">+</button></div></div>
+      </div>
+      <div class="sacos" style="margin-top:14px">
+        <div><div class="lbl"><img src="img/ricocan.png" alt="Ricocan" style="height:26px;border-radius:6px;vertical-align:middle"> <small>15 kg</small></div>
+          <div class="stepper"><button type="button" data-step="pRc15" data-d="-1">−</button><input id="pRc15" type="number" inputmode="numeric" min="0" value="0"><button type="button" data-step="pRc15" data-d="1">+</button></div></div>
+        <div><div class="lbl"><img src="img/ricocat.png" alt="Ricocat" style="height:26px;border-radius:6px;vertical-align:middle"> <small>9 kg</small></div>
+          <div class="stepper"><button type="button" data-step="pRt9" data-d="-1">−</button><input id="pRt9" type="number" inputmode="numeric" min="0" value="0"><button type="button" data-step="pRt9" data-d="1">+</button></div></div>
       </div>
       <div class="summary" id="pResumen"></div>
     </div>
@@ -662,9 +668,14 @@ $('#aEnviar').onclick = async () => {
 
 /* ---------- pedido / canje ---------- */
 const n = id => Math.max(0, parseInt($('#' + id).value, 10) || 0);
+// Sacos de las 4 presentaciones: Ricocan 22 y 15 kg, Ricocat 15 y 9 kg. Todos cuentan igual para el vale.
+const SACOS_IDS = ['pRc', 'pRc15', 'pRt', 'pRt9'];
+function sacosForm() {
+  const rc = n('pRc'), rc15 = n('pRc15'), rt = n('pRt'), rt9 = n('pRt9');
+  return { rc, rc15, rt, rt9, tot: rc + rc15 + rt + rt9, kg: rc * C.KG.ricocan + rc15 * C.KG.ricocan15 + rt * C.KG.ricocat + rt9 * C.KG.ricocat9 };
+}
 $$('[data-step]').forEach(b => b.onclick = () => { const i = $('#' + b.dataset.step); i.value = Math.max(0, (parseInt(i.value, 10) || 0) + Number(b.dataset.d)); calcPedido(); });
-['pRc', 'pRt'].forEach(id => $('#' + id).addEventListener('input', calcPedido));
-$('#pRc').addEventListener('focus', e => e.target.select()); $('#pRt').addEventListener('focus', e => e.target.select());
+SACOS_IDS.forEach(id => { $('#' + id).addEventListener('input', calcPedido); $('#' + id).addEventListener('focus', e => e.target.select()); });
 const consVisible = () => { $('#pConsWrap').hidden = !($('#pCelular').value || $('#pDni').value); };
 $('#pCelular').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, ''); consVisible(); });
 let dniT, dniUsado = false;
@@ -709,7 +720,7 @@ $('#pCodigo').addEventListener('input', e => {
 });
 let valesPrev = -1;
 function calcPedido() {
-  const rc = n('pRc'), rt = n('pRt'), tot = rc + rt, req = sacosReq(), vales = req && tot >= req ? 1 : 0, kg = rc * C.KG.ricocan + rt * C.KG.ricocat;
+  const { tot, kg } = sacosForm(), req = sacosReq(), vales = req && tot >= req ? 1 : 0;
   const merc = mercadoHoy();
   const box = $('#pResumen');
   box.className = 'summary' + (vales ? ' canje' : '');
@@ -732,13 +743,13 @@ $('#goPedido').onclick = () => {
   const v = $('#vPedido');
   ['pPuesto', 'pCliente', 'pDni', 'pCelular', 'pNComp', 'pObs', 'pCodigo'].forEach(id => $('#' + id).value = '');
   estadoDni('', ''); dniUsado = false; estadoVale('', ''); valeMalo = '';
-  $('#pRc').value = 0; $('#pRt').value = 0; $('#pCons').checked = false; $('#pLima').checked = false; $('#pConsWrap').hidden = true;
+  SACOS_IDS.forEach(id => $('#' + id).value = 0); $('#pCons').checked = false; $('#pLima').checked = false; $('#pConsWrap').hidden = true;
   $('#pPuestoSel').innerHTML = '<option value="">Elige el puesto</option>' + C.PUESTOS_PRODUCTORES.map(p => `<option>${esc(p)}</option>`).join('');
   resetFotos(v); showErr(v, ''); valesPrev = -1; onMercadoPedido(); calcPedido(); show('vPedido');
 };
 $('#pEnviar').onclick = async () => {
   const v = $('#vPedido');
-  const rc = n('pRc'), rt = n('pRt'), tot = rc + rt, req = sacosReq(), vales = req && tot >= req ? 1 : 0;
+  const { rc, rc15, rt, rt9, tot } = sacosForm(), req = sacosReq(), vales = req && tot >= req ? 1 : 0;
   const prod = /productores/i.test(mercadoHoy());
   const dni = normDni($('#pDni').value);
   const puesto = prod ? $('#pPuestoSel').value : $('#pPuesto').value.trim();
@@ -766,7 +777,7 @@ $('#pEnviar').onclick = async () => {
   e(''); overlay(true);
   const payload = {
     tipo: 'pedido', mercado: mercadoHoy(), puesto, cliente: $('#pCliente').value.trim(), dni, celular: cel, consentimiento: $('#pCons').checked,
-    ricocan: rc, ricocat: rt, tipo_comprobante: $('#pTipoComp').value, n_comprobante: $('#pNComp').value.trim().toUpperCase(),
+    ricocan: rc, ricocan15: rc15, ricocat: rt, ricocat9: rt9, tipo_comprobante: $('#pTipoComp').value, n_comprobante: $('#pNComp').value.trim().toUpperCase(),
     codigos: vales ? codigos : [], foto_comprobante: foto('vPedido', 'foto_comprobante'),
     foto_entrega: vales ? foto('vPedido', 'foto_entrega') : '', firma: vales ? firma.dataUrl() : '',
     compra_lima: $('#pLima').checked, observaciones: $('#pObs').value.trim(), lat: gps && gps.lat, lng: gps && gps.lng,
