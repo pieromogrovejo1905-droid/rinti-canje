@@ -10,7 +10,7 @@
 const TZ = 'America/Lima';
 const KG = { ricocan: 22, ricocat: 15, ricocan15: 15, ricocat9: 9 };
 const P = PropertiesService.getScriptProperties();
-const VERSION_ESQUEMA = '5';
+const VERSION_ESQUEMA = '6';
 
 const MERCADOS = [
   'Fiori', 'Unicachi Norte Mayorista', 'Unicachi Norte Minorista', 'Unicachi Sur',
@@ -58,7 +58,19 @@ const ESQUEMA = {
   // Lista de vales impresos. Si tiene códigos, solo se aceptan esos (y del mercado indicado, si se llena).
   Talonario: ['codigo', 'mercado', 'nota'],
   Config: ['clave', 'valor', 'nota'],
+  // Relevo de stock de los promotores: una fila por relevo, 6 columnas por presentación.
+  Stock: ['id', 'registrado', 'fecha', 'hora', 'promotor', 'mercado', 'turno'].concat(
+    ['rc22', 'rc15', 'rt15', 'rt9'].reduce(function (a, k) {
+      return a.concat([k + '_estado', k + '_exhibicion', k + '_almacen', k + '_total', k + '_transito', k + '_transito_sacos']);
+    }, []),
+    ['alerta', 'motivos', 'aviso_distribuidor', 'foto', 'lat', 'lng']),
 };
+
+// Presentaciones del relevo de stock y opciones del formulario.
+const STOCK_SKUS = { rc22: 'Ricocan 22 kg', rc15: 'Ricocan 15 kg', rt15: 'Ricocat 15 kg', rt9: 'Ricocat 9 kg' };
+const STOCK_ESTADOS = ['Con stock', 'Quiebre total', 'No trabaja este SKU'];
+const STOCK_TURNOS = ['Apertura', 'Cierre'];
+const STOCK_BAJO = 3; // menos de 3 sacos = bajo stock
 
 // Columnas que se guardan como texto (para que Sheets no las convierta en fecha/número).
 const COLUMNAS_TEXTO = ['id', 'fecha', 'hora', 'celular', 'n_comprobante', 'codigos_vale', 'codigo', 'pedido_id', 'pin', 'valor',
@@ -192,7 +204,7 @@ function doPost(e) {
       return out_(Object.assign(datos_(true), { usuario: u }));
     }
     if (b.tipo === 'validar') return out_(validar_(b, u));
-    const fn = { asistencia: asistencia_, pedido: pedido_, incidencia: incidencia_, cierre: cierre_ }[b.tipo];
+    const fn = { asistencia: asistencia_, pedido: pedido_, incidencia: incidencia_, cierre: cierre_, stock: stock_ }[b.tipo];
     if (!fn) return out_({ ok: false, code: 'val', error: 'Tipo de registro desconocido' });
     if (!b.id) return out_({ ok: false, code: 'val', error: 'Falta el id del registro' });
     return out_(fn(b, u));
@@ -224,6 +236,7 @@ function datos_(interno) {
     config: configPublica_(), sacos_por_mercado: SACOS_POR_MERCADO,
     equipo: equipoPublico_(), asistencia: leer_('Asistencia'), pedidos: pedidos,
     incidencias: interno ? leer_('Incidencias') : [], cierres: cierres,
+    stock: hoja_('Stock') ? leer_('Stock') : [],
   };
 }
 
@@ -463,6 +476,59 @@ function incidencia_(b, u) {
   });
 }
 
+/**
+ * Relevo de stock: por cada presentación, estado, sacos en exhibición y en almacén
+ * (el total lo calcula el sistema) y pedido en tránsito. Si alguna presentación que el
+ * puesto trabaja está en quiebre o con menos de 3 sacos, se piden el motivo y el aviso.
+ */
+function stock_(b, u) {
+  if (existeId_('Stock', b.id)) return { ok: true, duplicado: true };
+  b.mercado = mercadoDe_(b, u);
+  const turno = limpio_(b.turno);
+  if (STOCK_TURNOS.indexOf(turno) < 0) throw val_('Elige el turno (apertura o cierre)');
+  const fila = {}, skus = b.skus || {};
+  let alerta = false, trabaja = 0;
+  Object.keys(STOCK_SKUS).forEach(function (k) {
+    const s = skus[k] || {}, nombre = STOCK_SKUS[k], estado = limpio_(s.estado);
+    if (STOCK_ESTADOS.indexOf(estado) < 0) throw val_('Elige el estado de ' + nombre);
+    const conStock = estado === 'Con stock';
+    const ex = conStock ? entero_(s.exhibicion) : 0, al = conStock ? entero_(s.almacen) : 0, total = ex + al;
+    if (conStock && total === 0) throw val_(nombre + ': con stock pero 0 sacos. Si no tiene, marca quiebre total');
+    const noTrabaja = estado === 'No trabaja este SKU';
+    const transito = noTrabaja ? '' : (s.transito === true || /^s/i.test(String(s.transito)) ? 'SÍ' : 'NO');
+    const tSacos = transito === 'SÍ' ? entero_(s.transito_sacos) : 0;
+    if (transito === 'SÍ' && !tSacos) throw val_(nombre + ': indica cuántos sacos están en tránsito');
+    if (!noTrabaja) { trabaja++; if (total < STOCK_BAJO) alerta = true; }
+    fila[k + '_estado'] = estado;
+    fila[k + '_exhibicion'] = noTrabaja ? '' : ex;
+    fila[k + '_almacen'] = noTrabaja ? '' : al;
+    fila[k + '_total'] = noTrabaja ? '' : total;
+    fila[k + '_transito'] = transito;
+    fila[k + '_transito_sacos'] = transito === 'SÍ' ? tSacos : '';
+  });
+  if (!trabaja) throw val_('Marca al menos una presentación que trabaje el puesto');
+  const motivos = alerta ? (Array.isArray(b.motivos) ? b.motivos : []).map(limpio_).filter(String) : [];
+  const aviso = alerta ? limpio_(b.aviso_distribuidor) : '';
+  if (alerta && !motivos.length) throw val_('Hay quiebre o bajo stock: elige al menos un motivo');
+  if (alerta && ['SÍ', 'NO'].indexOf(aviso) < 0) throw val_('Indica si se alertó al ejecutivo o distribuidor');
+  if (!b.foto) throw val_('Falta la foto de la ruma o exhibición');
+
+  const t = cuando_(b.capturado);
+  const subidas = [];
+  const foto = foto_(b.foto, t.fecha + '_' + b.mercado + '_stock_' + turno, t.fecha, subidas);
+  return conLock_(function () {
+    if (existeId_('Stock', b.id)) { borrar_(subidas); return { ok: true, duplicado: true }; }
+    agregar_('Stock', Object.assign({
+      id: b.id, registrado: ahora_(), fecha: t.fecha, hora: t.hora, promotor: u.nombre,
+      mercado: b.mercado, turno: turno,
+    }, fila, {
+      alerta: alerta ? 'SÍ' : 'NO', motivos: motivos.join(' | ').slice(0, 500), aviso_distribuidor: aviso,
+      foto: foto, lat: num_(b.lat), lng: num_(b.lng),
+    }));
+    return { ok: true, alerta: alerta };
+  });
+}
+
 function cierre_(b, u) {
   if (!esJefe_(u)) throw val_('Solo el supervisor o el coordinador puede enviar el cierre');
   if (existeId_('Cierres', b.id)) return { ok: true, duplicado: true };
@@ -535,7 +601,7 @@ function asegurarAccesos_() {
   if (P.getProperty('ESQUEMA') === VERSION_ESQUEMA && config_().cliente_clave) return;
   conLock_(function () {
     if (P.getProperty('ESQUEMA') === VERSION_ESQUEMA && config_().cliente_clave) return; // otro pedido ya lo hizo
-    ['Pedidos', 'Equipo', 'Talonario'].forEach(function (nombre) {
+    ['Pedidos', 'Equipo', 'Talonario', 'Stock'].forEach(function (nombre) {
       const cols = ESQUEMA[nombre];
       const sh = hoja_(nombre) || ss_().insertSheet(nombre);
       if (sh.getLastRow() === 0) sh.setFrozenRows(1);

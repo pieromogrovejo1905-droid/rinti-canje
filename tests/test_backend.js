@@ -141,12 +141,33 @@ r = post(canje({ ...K('fiori'), id: 'v3', ricocan15: 8, ricocat9: 7, n_comproban
 const v3 = sh('Pedidos').find(p => p.id === 'v3');
 ok('Ricocan 15 kg + Ricocat 9 kg cuentan para el vale', r.ok && r.vales === 1 && v3.sacos_total == 15 && v3.sacos_ricocan == 8 && v3.sacos_ricocat == 7, JSON.stringify(r));
 ok('detalle y kg de las presentaciones nuevas', v3.sacos_ricocan_15kg == 8 && v3.sacos_ricocat_9kg == 7 && v3.kg_total == 8 * 15 + 7 * 9, JSON.stringify(v3).slice(0, 200));
+// ---- relevo de stock ----
+const FOTO = 'data:image/jpeg;base64,AAAA';
+const skOk = { rc22: { estado: 'Con stock', exhibicion: 4, almacen: 6, transito: 'NO' }, rc15: { estado: 'Con stock', exhibicion: 3, almacen: 0, transito: 'NO' },
+  rt15: { estado: 'No trabaja este SKU' }, rt9: { estado: 'Con stock', exhibicion: 2, almacen: 5, transito: 'SÍ', transito_sacos: 10 } };
+r = post({ ...K('fiori'), tipo: 'stock', id: 's1', turno: 'Apertura', skus: skOk, foto: FOTO, mercado: 'Parada' });
+const s1 = sh('Stock').find(x => x.id === 's1');
+ok('stock: guarda relevo con totales automáticos', r.ok && !r.alerta && s1 && s1.mercado === 'Fiori' && s1.rc22_total == 10 && s1.rc15_total == 3 && s1.rt15_total === '' && s1.rt9_transito_sacos == 10 && s1.alerta === 'NO', JSON.stringify(r) + JSON.stringify(s1).slice(0, 300));
+ok('stock: pide turno', /turno/.test(post({ ...K('fiori'), tipo: 'stock', id: 's2', skus: skOk, foto: FOTO }).error));
+ok('stock: pide foto', /foto/.test(post({ ...K('fiori'), tipo: 'stock', id: 's2', turno: 'Cierre', skus: skOk }).error));
+ok('stock: pide estado de cada presentación', /Ricocat 15 kg/.test(post({ ...K('fiori'), tipo: 'stock', id: 's2', turno: 'Cierre', skus: { ...skOk, rt15: {} }, foto: FOTO }).error));
+ok('stock: tránsito sin cantidad', /tránsito/.test(post({ ...K('fiori'), tipo: 'stock', id: 's2', turno: 'Cierre', skus: { ...skOk, rt9: { estado: 'Con stock', exhibicion: 5, transito: 'SÍ' } }, foto: FOTO }).error));
+const skQ = { ...skOk, rc15: { estado: 'Quiebre total', exhibicion: 9, transito: 'NO' } };
+ok('stock: quiebre pide motivo', /motivo/.test(post({ ...K('fiori'), tipo: 'stock', id: 's2', turno: 'Cierre', skus: skQ, foto: FOTO }).error));
+ok('stock: quiebre pide aviso', /alertó/.test(post({ ...K('fiori'), tipo: 'stock', id: 's2', turno: 'Cierre', skus: skQ, foto: FOTO, motivos: ['Demora en entrega'] }).error));
+r = post({ ...K('fiori'), tipo: 'stock', id: 's2', turno: 'Cierre', skus: skQ, foto: FOTO, motivos: ['Demora en entrega', 'Falta de liquidez'], aviso_distribuidor: 'SÍ' });
+const s2 = sh('Stock').find(x => x.id === 's2');
+ok('stock: quiebre se guarda con alerta y motivos', r.ok && r.alerta && s2.rc15_total == 0 && s2.rc15_exhibicion == 0 && s2.alerta === 'SÍ' && /Demora.*Falta/.test(s2.motivos) && s2.aviso_distribuidor === 'SÍ', JSON.stringify(s2).slice(0, 300));
+ok('stock: menos de 3 sacos es bajo stock', /motivo/.test(post({ ...K('fiori'), tipo: 'stock', id: 's3', turno: 'Cierre', skus: { ...skOk, rc22: { estado: 'Con stock', exhibicion: 2, transito: 'NO' } }, foto: FOTO }).error));
+ok('stock: supervisor elige mercado', post({ ...S, tipo: 'stock', id: 's4', turno: 'Apertura', mercado: 'Parada', skus: skOk, foto: FOTO }).ok && sh('Stock').find(x => x.id === 's4').mercado === 'Parada');
+ok('stock: id repetido no duplica', post({ ...K('fiori'), tipo: 'stock', id: 's1', turno: 'Apertura', skus: skOk, foto: FOTO }).duplicado && sh('Stock').filter(x => x.id === 's1').length === 1);
 // ---- dashboards cliente / interno y validación ----
 post({ ...F, tipo: 'incidencia', id: 'i1', tipo_incidencia: 'Otro', detalle: 'algo pasó' });
 const dc = get({ action: 'data', k: props.DASH_TOKEN });
 ok('cliente: sin incidencias ni observaciones', dc.modo === 'cliente' && dc.incidencias.length === 0 && !dc.pedidos.some(p => 'observaciones' in p || 'alertas' in p || 'celular' in p));
 const di = post({ ...S, tipo: 'datos_interno' });
 ok('interno: con incidencias, observaciones y DNI completo', di.ok && di.modo === 'interno' && di.incidencias.length === 1 && di.pedidos.some(p => p.dni === '12345678') && 'observaciones' in di.pedidos[0], JSON.stringify(di).slice(0, 120));
+ok('dashboards reciben el stock', dc.stock.length === 3 && di.stock.length === 3);
 ok('interno: impulsadora no entra', post({ ...F, tipo: 'datos_interno' }).code === 'auth');
 ok('validar: impulsadora no puede', post({ ...F, tipo: 'validar', id: 'p2', validacion: 'Válido' }).code === 'val');
 ok('validar: observado pide motivo', /motivo/.test(post({ ...S, tipo: 'validar', id: 'p2', validacion: 'Observado' }).error));
