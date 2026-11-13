@@ -51,6 +51,21 @@ window.RINTI = {
     'Criadores Trading · Pje. San Francisco de Asís, Pto. 21-23',
   ],
 
+  // Relevo de stock (promotores): presentaciones, en el orden del formulario.
+  STOCK_SKUS: [
+    { k: 'rc22', marca: 'Ricocan', kg: '22 kg', img: 'img/ricocan.png' },
+    { k: 'rc15', marca: 'Ricocan', kg: '15 kg', img: 'img/ricocan.png' },
+    { k: 'rt15', marca: 'Ricocat', kg: '15 kg', img: 'img/ricocat.png' },
+    { k: 'rt9', marca: 'Ricocat', kg: '9 kg', img: 'img/ricocat.png' },
+  ],
+  STOCK_BAJO: 3, // menos de 3 sacos = bajo stock (pide motivo)
+  STOCK_MOTIVOS: [
+    'Alta rotación por activación / promoción de vales',
+    'Demora en entrega del distribuidor / vendedor',
+    'Comerciante priorizó compra de otra marca (Thor / Mimaskot / Cat Chow)',
+    'Falta de liquidez o espacio en puesto',
+  ],
+
   TIPOS_INCIDENCIA: [
     'Quiebre de stock Ricocan / Ricocat',
     'Sin vales o pavos disponibles',

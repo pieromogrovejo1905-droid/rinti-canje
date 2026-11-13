@@ -137,6 +137,12 @@
   table.proy .mini{justify-content:center} table.proy .mini .b{width:50px}
   table.proy thead tr:last-child th{white-space:normal;line-height:1.25;max-width:96px;vertical-align:bottom}
   table.proy td,table.proy th{padding-left:8px;padding-right:8px}
+  table.stk td{vertical-align:top}
+  table.stk .sk{display:inline-block;min-width:44px;font-weight:700;font-size:15px;padding:3px 8px;border-radius:8px;background:var(--ok-soft);color:var(--ok)}
+  table.stk .sk.bajo{background:var(--warn-soft);color:var(--warn)} table.stk .sk.q{background:var(--err-soft);color:var(--err);font-size:12px}
+  table.stk .sk.na{background:transparent;color:var(--muted);font-weight:500;font-size:12px}
+  table.stk small{display:block;color:var(--muted);font-size:11.5px;margin-top:3px;font-weight:500}
+  table.stk td.mot{white-space:normal;text-align:left;min-width:180px;max-width:280px;font-size:12.5px;color:var(--ink2)}
   @media print{
     body{background:#fff}
     .filters,.noprint,.live{display:none!important}
@@ -208,6 +214,13 @@
     <h2>Resultados por mercado</h2>
     <div class="sub" id="subMercado"></div>
     <div class="tw"><table id="tMercado"></table></div>
+  </section>
+
+  <section class="card" id="secStock">
+    <h2>Stock en puntos de venta</h2>
+    <div class="sub" id="subStock"></div>
+    <div class="pkpis" id="kStock"></div>
+    <div class="tw"><table id="tStock" class="efe stk"></table></div>
   </section>
 
   <section class="grid2" id="secCuadre">
@@ -372,7 +385,8 @@ function normalizar() {
   D.inicio = cfg.fecha_inicio || '';
   D.fin = cfg.fecha_fin || '';
   // Lo anterior a la fecha de inicio fueron pruebas: se oculta en el dashboard (sigue en el Sheet)
-  if (D.inicio) ['pedidos', 'asistencia', 'incidencias', 'cierres'].forEach(k => { D[k] = (D[k] || []).filter(r => !r.fecha || r.fecha >= D.inicio); });
+  D.stock = D.stock || [];
+  if (D.inicio) ['pedidos', 'asistencia', 'incidencias', 'cierres', 'stock'].forEach(k => { D[k] = (D[k] || []).filter(r => !r.fecha || r.fecha >= D.inicio); });
   D.pedidos.forEach(p => {
     p._rc = num(p.sacos_ricocan); p._rt = num(p.sacos_ricocat); p._tot = p._rc + p._rt;
     p._rc15 = num(p.sacos_ricocan_15kg); p._rt9 = num(p.sacos_ricocat_9kg); // detalle: parte de _rc / _rt
@@ -453,6 +467,7 @@ function pintar() {
   graficoHora(canjes);
   tablaEquipo();
   tablaMercado(P, A, I, dias);
+  tablaStock();
   tablaCuadre();
   if (INTERNO) listaInc(I, P);
   $('#secCuadre').style.gridTemplateColumns = INTERNO ? '' : '1fr';
@@ -649,6 +664,44 @@ function tablaProyectado() {
     <th class="sep">Consumo proyectado</th><th>Alcance proyectado</th><th title="Cuota total − consumo proyectado">Saldo residual</th></tr></thead>
     <tbody>${rows.map(r => fila(r)).join('')}</tbody><tfoot>${fila(T, true)}</tfoot>`;
 }
+// Relevo de stock de los promotores: último relevo de cada mercado dentro del periodo elegido.
+function tablaStock() {
+  const R = filtrar(D.stock), [a, b] = rango(), h = hoy();
+  const mercados = [...ORDEN_EFECTIVOS.filter(m => D.mercados.includes(m)), ...D.mercados.filter(m => !ORDEN_EFECTIVOS.includes(m))]
+    .filter(m => !F.mercado || m === F.mercado);
+  const ult = {};
+  R.forEach(r => { const k = r.fecha + ' ' + r.hora; if (!ult[r.mercado] || k > ult[r.mercado]._k) ult[r.mercado] = Object.assign(r, { _k: k }); });
+  const k = { rel: 0, q: 0, bajo: 0, disp: 0, tr: 0 };
+  const celda = (r, s) => {
+    const e = r[s.k + '_estado'], tot = num(r[s.k + '_total']), tr = r[s.k + '_transito'] === 'SÍ' ? num(r[s.k + '_transito_sacos']) : 0;
+    if (!e || e === 'No trabaja este SKU') return '<span class="sk na">No trabaja</span>';
+    k.disp += tot; k.tr += tr;
+    const quiebre = e === 'Quiebre total' || !tot;
+    if (quiebre) k.q++; else if (tot < C.STOCK_BAJO) k.bajo++;
+    const chip = quiebre ? '<span class="sk q">Quiebre</span>' : `<span class="sk${tot < C.STOCK_BAJO ? ' bajo' : ''}" title="Exhibición ${fmt(num(r[s.k + '_exhibicion']))} · almacén ${fmt(num(r[s.k + '_almacen']))}">${fmt(tot)}</span>`;
+    return chip + (tr ? `<small>+${fmt(tr)} en tránsito</small>` : '');
+  };
+  const rows = mercados.map(m => {
+    const r = ult[m];
+    if (!r) return `<tr><td><b>${esc(m)}</b></td><td colspan="${C.STOCK_SKUS.length + 3}" style="text-align:left"><span class="st na">Sin relevo${a === b ? (a === h ? ' hoy' : ' ese día') : ' en el periodo'}</span></td></tr>`;
+    k.rel++;
+    const n = R.filter(x => x.mercado === m).length;
+    return `<tr><td><b>${esc(m)}</b></td>
+      <td>${fCorta(r.fecha)} ${esc(r.hora)}<small>${esc(r.turno)} · ${esc(r.promotor)}${n > 1 ? ` · ${n} relevos` : ''}</small></td>
+      ${C.STOCK_SKUS.map(s => `<td>${celda(r, s)}</td>`).join('')}
+      <td class="mot">${r.alerta === 'SÍ' ? `${esc(String(r.motivos || '').split(' | ').join(' · '))}<small>${r.aviso_distribuidor === 'SÍ' ? 'Se alertó al distribuidor' : r.aviso_distribuidor === 'NO' ? '<span style="color:var(--err)">No se alertó al distribuidor</span>' : ''}</small>` : '<span class="st ok">Sin alerta</span>'}</td>
+      <td>${r.foto ? `<a href="${esc(r.foto)}" target="_blank" rel="noopener">Ver foto</a>` : '—'}</td></tr>`;
+  });
+  $('#subStock').textContent = `Relevo de stock de los promotores · último relevo de cada mercado ${a === b ? (a === h ? 'de hoy' : 'del ' + fCorta(a)) : `entre el ${fCorta(a)} y el ${fCorta(b)}`} · en sacos · bajo stock = menos de ${C.STOCK_BAJO} sacos`;
+  $('#kStock').innerHTML = [
+    ['Mercados relevados', `${k.rel} <span style="font-size:14px;color:var(--muted)">de ${mercados.length}</span>`],
+    ['Quiebres', `<span style="color:${k.q ? 'var(--err)' : 'inherit'}">${fmt(k.q)}</span>`],
+    ['Bajo stock', `<span style="color:${k.bajo ? 'var(--warn)' : 'inherit'}">${fmt(k.bajo)}</span>`],
+    ['Sacos disponibles', fmt(k.disp)],
+    ['Sacos en tránsito', fmt(k.tr)],
+  ].map(([l, v]) => `<div>${l}<b>${v}</b></div>`).join('');
+  $('#tStock').innerHTML = `<thead><tr><th>Mercado</th><th>Relevo</th>${C.STOCK_SKUS.map(s => `<th>${s.marca} ${s.kg}</th>`).join('')}<th style="text-align:left">Alerta / motivo</th><th>Evidencia</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+}
 function tablaCuadre() {
   const cfg = D.config || {};
   const mercados = [...ORDEN_EFECTIVOS.filter(m => D.mercados.includes(m)), ...D.mercados.filter(m => !ORDEN_EFECTIVOS.includes(m))];
@@ -827,7 +880,21 @@ function demo() {
       if (rnd() < 0.12) incidencias.push({ id: 'i' + n++, fecha: f, hora: '1' + Math.floor(rnd() * 7) + ':15', impulsadora: e.nombre, mercado: e.mercado, tipo_incidencia: pick(C.TIPOS_INCIDENCIA.slice(0, 6)), detalle: pick(['El puesto no tenía Ricocat de 15 kg.', 'Cliente compró 6 sacos, completa mañana.', 'Se acabaron los vales a las 4 pm.', 'Distribuidor no llegó con el pedido.']), foto: '' });
     });
   }
-  return { ok: true, config: { meta_diaria_por_impulsadora: '6', impulsadoras_planificadas: '9', hora_ingreso: '09:00', fecha_inicio: addDias(h, -(dias - 1)) }, equipo, asistencia, pedidos, incidencias, cierres };
+  const stock = [];
+  equipo.filter(e => e.rol === 'impulsadora').forEach((e, i) => {
+    if (i === 4) return; // un mercado sin relevo
+    const r = { id: 's' + n++, fecha: h, hora: '08:' + String(10 + i * 4), promotor: e.nombre, mercado: e.mercado, turno: 'Apertura', alerta: 'NO', foto: ph('Ruma', '#3d4a5c') };
+    C.STOCK_SKUS.forEach((s, j) => {
+      const x = rnd(), est = x < 0.12 ? 'Quiebre total' : x < 0.2 ? 'No trabaja este SKU' : 'Con stock';
+      const ex = est === 'Con stock' ? Math.floor(rnd() * 8) + (j ? 0 : 2) : 0, al = est === 'Con stock' ? Math.floor(rnd() * 12) : 0;
+      Object.assign(r, { [s.k + '_estado']: est, [s.k + '_exhibicion']: ex, [s.k + '_almacen']: al, [s.k + '_total']: est === 'No trabaja este SKU' ? '' : ex + al, [s.k + '_transito']: rnd() < 0.3 ? 'SÍ' : 'NO' });
+      if (r[s.k + '_transito'] === 'SÍ') r[s.k + '_transito_sacos'] = 5 + Math.floor(rnd() * 15);
+      if (est !== 'No trabaja este SKU' && ex + al < C.STOCK_BAJO) r.alerta = 'SÍ';
+    });
+    if (r.alerta === 'SÍ') { r.motivos = pick(C.STOCK_MOTIVOS) + (rnd() < 0.4 ? ' | ' + C.STOCK_MOTIVOS[3] : ''); r.aviso_distribuidor = rnd() < 0.7 ? 'SÍ' : 'NO'; }
+    stock.push(r);
+  });
+  return { ok: true, config: { meta_diaria_por_impulsadora: '6', impulsadoras_planificadas: '9', hora_ingreso: '09:00', fecha_inicio: addDias(h, -(dias - 1)) }, equipo, asistencia, pedidos, incidencias, cierres, stock };
 }
 
 $('#loginForm').addEventListener('submit', ingresar);

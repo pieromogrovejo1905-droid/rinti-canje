@@ -134,6 +134,22 @@
   .pn-acc{display:flex;gap:8px;margin-top:10px}
   .pn-acc a{flex:1;text-align:center;text-decoration:none;font-weight:600;font-size:14px;padding:9px 6px;border-radius:10px;border:1px solid var(--line);color:var(--accent);background:#fff}
   .pn-inc{margin-top:8px;font-size:13.5px;color:var(--warn);background:var(--warn-soft);border-radius:10px;padding:8px 10px}
+  /* Relevo de stock */
+  .kv{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
+  .kv span{color:var(--muted)}
+  .opciones{display:flex;flex-wrap:wrap;gap:8px}
+  .opciones button{flex:1 1 0;min-width:96px;min-height:48px;border:1px solid #cfcfcb;border-radius:12px;background:#fff;font:inherit;font-weight:600;font-size:15px;color:var(--ink);cursor:pointer;padding:6px 8px;line-height:1.2}
+  .opciones button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .opciones.q button[data-v="Quiebre total"].on{background:var(--err);border-color:var(--err);color:#fff}
+  .opciones.q button[data-v="No trabaja este SKU"].on{background:#6b6b70;border-color:#6b6b70;color:#fff}
+  .sku{border-top:1px solid var(--line);margin-top:16px;padding-top:14px}
+  .sku-h{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;margin-bottom:10px}
+  .sku-h img{height:26px;border-radius:6px}
+  .sku-h small{font-weight:600;color:var(--muted)}
+  .sku-tot{margin-top:10px;padding:10px 12px;border-radius:10px;background:#f2f2ef;font-size:15px}
+  .sku-tot.bajo{background:var(--warn-soft);color:var(--warn)} .sku-tot.cero{background:var(--err-soft);color:var(--err)}
+  .sku .lbl{font-size:13px;font-weight:700;margin:12px 0 6px}
+  .alerta-txt{background:var(--err-soft);color:var(--err);border-radius:10px;padding:10px 12px;font-size:14.5px;font-weight:600}
   .err-box{background:var(--err-soft);color:var(--err);padding:12px;border-radius:10px;font-size:15px;margin-top:12px}
   .cola-item{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;margin-bottom:8px;font-size:14px}
   .cola-item .e{color:var(--err);margin-top:4px}
@@ -175,7 +191,7 @@
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
-    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión 11</p>
+    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión 12</p>
   </section>
 
   <!-- HOME -->
@@ -196,6 +212,7 @@
     <button class="btn" id="goPanel" hidden><span class="ic">👥</span>Panel del equipo</button>
     <button class="btn" id="goAsis"><span class="ic">🕘</span><span id="goAsisTxt">Marcar entrada</span></button>
     <button class="btn" id="goPedido"><span class="ic">🧾</span>Registrar pedido / canje</button>
+    <button class="btn" id="goStock"><span class="ic">📋</span>Relevo de stock</button>
     <button class="btn sec" id="goInc"><span class="ic">⚠️</span>Reportar incidencia</button>
     <button class="btn sec" id="goCierre" hidden><span class="ic">📦</span>Cierre del día (pavos)</button>
     <button class="btn sec" id="goCola" hidden><span class="ic">📤</span><span id="goColaTxt">Pendientes por enviar</span></button>
@@ -290,6 +307,41 @@
       <div class="gps" data-gps></div>
       <div class="err-box" data-err hidden></div>
       <button class="btn" id="pEnviar">Guardar</button>
+    </div>
+  </section>
+
+  <!-- RELEVO DE STOCK -->
+  <section id="vStock" class="view" hidden>
+    <button class="back" data-back>‹ Volver</button>
+    <h2>Relevo de stock</h2>
+    <div class="card">
+      <h3 style="margin-top:0">1 · Plaza y turno</h3>
+      <div class="kv"><span>Fecha</span><b id="sFecha"></b></div>
+      <div class="kv"><span>Promotor</span><b id="sPromotor"></b></div>
+      <div id="sMercadoWrap"><div class="kv"><span>Mercado</span><b id="sMercadoTxt"></b></div></div>
+      <div id="sMercadoSelWrap" hidden><label class="f" for="sMercado">Mercado</label><select id="sMercado"></select></div>
+      <label class="f">Turno / hora de toma de stock</label>
+      <div class="opciones" data-grupo="turno"><button type="button" data-v="Apertura">Apertura (8 a. m.)</button><button type="button" data-v="Cierre">Cierre</button></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">2 · Stock por presentación</h3>
+      <div class="muted">Cantidades exactas en sacos.</div>
+      <div id="sSkus"></div>
+    </div>
+    <div class="card" id="sAlerta" hidden>
+      <h3 style="margin-top:0">3 · Alerta de quiebre</h3>
+      <div class="alerta-txt" id="sAlertaTxt"></div>
+      <label class="f">Motivo principal <span class="opt">(puedes marcar varios)</span></label>
+      <div id="sMotivos"></div>
+      <label class="f">¿Se alertó al ejecutivo / distribuidor de zona para reposición urgente?</label>
+      <div class="opciones" data-grupo="aviso"><button type="button" data-v="SÍ">Sí</button><button type="button" data-v="NO">No</button></div>
+    </div>
+    <div class="card">
+      <label class="f" style="margin-top:0">Foto de la ruma / exhibición de sacos <span class="opt">(obligatoria)</span></label>
+      <label class="foto" data-key="foto"><input type="file" accept="image/*" capture="environment"><span class="ph">📷</span><span class="t">Tomar foto</span></label>
+      <div class="gps" data-gps></div>
+      <div class="err-box" data-err hidden></div>
+      <button class="btn" id="sEnviar">Enviar relevo</button>
     </div>
   </section>
 
@@ -804,6 +856,105 @@ $('#iEnviar').onclick = async () => {
   if (r.estado === 'error') return showErr(v, r.error);
   toast(r.estado === 'cola' ? 'Incidencia guardada sin señal. Se enviará sola.' : 'Incidencia enviada ✔');
   show('vHome');
+};
+
+/* ---------- relevo de stock ---------- */
+const ST = { turno: '', aviso: '', skus: {} };
+const ESTADOS_STOCK = ['Con stock', 'Quiebre total', 'No trabaja este SKU'];
+const stepperHtml = id => `<div class="stepper"><button type="button" data-sstep="${id}" data-d="-1">−</button><input id="${id}" type="number" inputmode="numeric" min="0" value="0"><button type="button" data-sstep="${id}" data-d="1">+</button></div>`;
+$('#sSkus').innerHTML = C.STOCK_SKUS.map(s => `<div class="sku" data-sku="${s.k}">
+  <div class="sku-h"><img src="${s.img}" alt="${s.marca}">${s.marca.toUpperCase()} <small>${s.kg}</small></div>
+  <div class="opciones q" data-grupo="estado">${ESTADOS_STOCK.map(e => `<button type="button" data-v="${e}">${e === 'No trabaja este SKU' ? 'No trabaja' : e}</button>`).join('')}</div>
+  <div data-num hidden>
+    <div class="sacos" style="margin-top:4px">
+      <div><div class="lbl">En exhibición</div>${stepperHtml('s_' + s.k + '_ex')}</div>
+      <div><div class="lbl">En almacén / trastienda</div>${stepperHtml('s_' + s.k + '_al')}</div>
+    </div>
+    <div class="sku-tot" data-tot></div>
+  </div>
+  <div data-tr hidden>
+    <div class="lbl">¿Tiene pedido en tránsito / por recibir hoy o mañana?</div>
+    <div class="opciones" data-grupo="transito"><button type="button" data-v="SÍ">Sí</button><button type="button" data-v="NO">No</button></div>
+    <div data-trn hidden><div class="lbl">Sacos por recibir</div>${stepperHtml('s_' + s.k + '_tr')}</div>
+  </div>
+</div>`).join('');
+$('#sMotivos').innerHTML = C.STOCK_MOTIVOS.map((m, i) => `<label class="check"><input type="checkbox" value="${esc(m)}" id="sMot${i}"><span>${esc(m)}</span></label>`).join('');
+const sn = id => Math.max(0, parseInt(($('#' + id) || {}).value, 10) || 0);
+function stockSku(k) {
+  const s = ST.skus[k] || {}, estado = s.estado || '';
+  const con = estado === 'Con stock', no = estado === 'No trabaja este SKU';
+  const ex = con ? sn(`s_${k}_ex`) : 0, al = con ? sn(`s_${k}_al`) : 0;
+  return { estado, exhibicion: ex, almacen: al, total: ex + al, transito: no ? '' : (s.transito || ''), transito_sacos: s.transito === 'SÍ' ? sn(`s_${k}_tr`) : 0, trabaja: !!estado && !no };
+}
+function pintarStock() {
+  const bajos = [];
+  C.STOCK_SKUS.forEach(s => {
+    const box = $(`[data-sku="${s.k}"]`), d = stockSku(s.k), st = ST.skus[s.k] || {};
+    $$('[data-grupo="estado"] button', box).forEach(b => b.classList.toggle('on', b.dataset.v === d.estado));
+    $$('[data-grupo="transito"] button', box).forEach(b => b.classList.toggle('on', b.dataset.v === st.transito));
+    $('[data-num]', box).hidden = d.estado !== 'Con stock';
+    $('[data-tr]', box).hidden = !d.trabaja;
+    $('[data-trn]', box).hidden = st.transito !== 'SÍ';
+    const tot = $('[data-tot]', box);
+    tot.className = 'sku-tot' + (d.total === 0 ? ' cero' : d.total < C.STOCK_BAJO ? ' bajo' : '');
+    tot.innerHTML = `Stock total disponible: <b>${d.total}</b> saco${d.total === 1 ? '' : 's'}${d.total > 0 && d.total < C.STOCK_BAJO ? ' · bajo stock' : ''}`;
+    if (d.trabaja && d.total < C.STOCK_BAJO) bajos.push(`${s.marca} ${s.kg}: ${d.estado === 'Quiebre total' ? 'quiebre' : d.total + ' saco' + (d.total === 1 ? '' : 's')}`);
+  });
+  $$('#vStock > .card [data-grupo="turno"] button').forEach(b => b.classList.toggle('on', b.dataset.v === ST.turno));
+  $$('#sAlerta [data-grupo="aviso"] button').forEach(b => b.classList.toggle('on', b.dataset.v === ST.aviso));
+  $('#sAlerta').hidden = !bajos.length;
+  $('#sAlertaTxt').textContent = bajos.length ? 'Quiebre o bajo stock (menos de ' + C.STOCK_BAJO + ' sacos) · ' + bajos.join(' · ') : '';
+  return bajos.length > 0;
+}
+$('#vStock').addEventListener('click', e => {
+  const st = e.target.closest('[data-sstep]');
+  if (st) { const i = $('#' + st.dataset.sstep); i.value = Math.max(0, (parseInt(i.value, 10) || 0) + Number(st.dataset.d)); pintarStock(); return; }
+  const b = e.target.closest('.opciones button'); if (!b) return;
+  const g = b.parentElement.dataset.grupo, sku = b.closest('[data-sku]');
+  if (g === 'turno') ST.turno = b.dataset.v;
+  else if (g === 'aviso') ST.aviso = b.dataset.v;
+  else if (sku) { const k = sku.dataset.sku; ST.skus[k] = ST.skus[k] || {}; ST.skus[k][g] = b.dataset.v; }
+  pintarStock();
+});
+$('#vStock').addEventListener('input', e => { if (e.target.type === 'number') pintarStock(); });
+$('#goStock').onclick = () => {
+  const v = $('#vStock');
+  ST.turno = horaLima() < '12:00' ? 'Apertura' : 'Cierre'; ST.aviso = ''; ST.skus = {};
+  $$('input[type=number]', v).forEach(i => i.value = 0);
+  $$('#sMotivos input').forEach(i => i.checked = false);
+  $('#sFecha').textContent = new Date().toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' });
+  $('#sPromotor').textContent = S.user.nombre;
+  $('#sMercadoTxt').textContent = mercadoHoy();
+  $('#sMercadoWrap').hidden = esJefe(); $('#sMercadoSelWrap').hidden = !esJefe();
+  if (esJefe()) opts($('#sMercado'), C.MERCADOS, mercadoHoy());
+  resetFotos(v); showErr(v, ''); pintarStock(); show('vStock');
+};
+$('#sEnviar').onclick = async () => {
+  const v = $('#vStock');
+  const alerta = pintarStock();
+  if (!ST.turno) return showErr(v, 'Elige el turno');
+  const skus = {};
+  for (const s of C.STOCK_SKUS) {
+    const d = stockSku(s.k), nom = `${s.marca} ${s.kg}`;
+    if (!d.estado) return showErr(v, `Elige el estado de ${nom}`);
+    if (d.estado === 'Con stock' && !d.total) return showErr(v, `${nom}: pusiste "con stock" pero 0 sacos. Si no tiene, marca "Quiebre total"`);
+    if (d.trabaja && !d.transito) return showErr(v, `${nom}: indica si tiene pedido en tránsito`);
+    if (d.transito === 'SÍ' && !d.transito_sacos) return showErr(v, `${nom}: indica cuántos sacos están en tránsito`);
+    skus[s.k] = { estado: d.estado, exhibicion: d.exhibicion, almacen: d.almacen, transito: d.transito, transito_sacos: d.transito_sacos };
+  }
+  if (!C.STOCK_SKUS.some(s => stockSku(s.k).trabaja)) return showErr(v, 'Marca al menos una presentación que trabaje el puesto');
+  const motivos = alerta ? $$('#sMotivos input:checked').map(i => i.value) : [];
+  if (alerta && !motivos.length) return showErr(v, 'Hay quiebre o bajo stock: marca al menos un motivo');
+  if (alerta && !ST.aviso) return showErr(v, 'Indica si se alertó al ejecutivo o distribuidor');
+  if (!foto('vStock', 'foto')) return showErr(v, 'Falta la foto de la ruma o exhibición');
+  const mercado = esJefe() ? $('#sMercado').value : mercadoHoy();
+  showErr(v, ''); overlay(true);
+  const r = await registrar({ tipo: 'stock', mercado, turno: ST.turno, skus, motivos, aviso_distribuidor: alerta ? ST.aviso : '', foto: foto('vStock', 'foto'), lat: gps && gps.lat, lng: gps && gps.lng },
+    { titulo: `Relevo de stock · ${mercado} · ${ST.turno}`, fecha: hoy() });
+  overlay(false);
+  if (r.estado === 'error') return showErr(v, r.error);
+  toast(r.estado === 'cola' ? 'Relevo guardado sin señal. Se enviará solo.' : 'Relevo de stock enviado ✔');
+  show('vHome'); pintarHome();
 };
 
 /* ---------- cierre ---------- */
