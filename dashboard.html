@@ -129,6 +129,14 @@
   table.efe th,table.efe td{text-align:center;white-space:nowrap}
   table.efe th:first-child,table.efe td:first-child{text-align:left}
   table.efe td.pc{font-weight:700;color:#1c1c1e}
+  .pkpis{display:flex;flex-wrap:wrap;gap:10px 28px;margin:4px 0 14px}
+  .pkpis div{font-size:12.5px;color:var(--muted)} .pkpis b{display:block;font-size:22px;color:var(--ink)}
+  table.proy thead tr:first-child th{font-size:11px;letter-spacing:.04em;padding-bottom:4px}
+  table.proy th.g1{background:#e8eefb;color:#2c3e8f} table.proy th.g2{background:#efe8f8;color:#5b3f8f} table.proy th.g3{background:#fdeee2;color:#9a4f12}
+  table.proy td.sep,table.proy th.sep{border-left:1px solid var(--line)}
+  table.proy .mini{justify-content:center} table.proy .mini .b{width:50px}
+  table.proy thead tr:last-child th{white-space:normal;line-height:1.25;max-width:96px;vertical-align:bottom}
+  table.proy td,table.proy th{padding-left:8px;padding-right:8px}
   @media print{
     body{background:#fff}
     .filters,.noprint,.live{display:none!important}
@@ -181,6 +189,13 @@
     <h2>Canjes efectivos</h2>
     <div class="sub" id="subEfectivos"></div>
     <div class="tw"><table id="tEfectivos" class="efe"></table></div>
+  </section>
+
+  <section class="card" id="secProy">
+    <h2>Proyectado de la campaña</h2>
+    <div class="sub" id="subProy"></div>
+    <div class="pkpis" id="kProy"></div>
+    <div class="tw"><table id="tProy" class="efe proy"></table></div>
   </section>
 
   <section class="card">
@@ -433,6 +448,7 @@ function pintar() {
   ].join('');
 
   tablaEfectivos();
+  tablaProyectado();
   graficoDia(P, dias, imp);
   graficoHora(canjes);
   tablaEquipo();
@@ -595,6 +611,44 @@ function tablaEfectivos() {
 }
 // Kardex: cuota de vales físicos por mercado (hoja Config, filas cuota_vales_<mercado>) vs vales ya entregados.
 // Es el total de la campaña, no depende de los filtros de fecha.
+// Proyectado: con el ritmo de cada mercado (canjes por día efectivo) se estima cuántos vales se
+// consumirán en toda la campaña y cuántos quedarán sin usar. Total de campaña, no depende de los filtros.
+function tablaProyectado() {
+  const cfg = D.config || {};
+  const ini = D.inicio || C.INICIO_EFECTIVO;
+  const fin = D.fin || ini;
+  const nDias = diasHabiles(ini, fin).length;            // días de campaña (lunes a sábado)
+  const h = hoy(), hasta = fin < h ? fin : h;
+  const mercados = [...ORDEN_EFECTIVOS.filter(m => D.mercados.includes(m)), ...D.mercados.filter(m => !ORDEN_EFECTIVOS.includes(m))];
+  const pct1 = (a, b) => b ? (Math.round(a / b * 1000) / 10).toLocaleString('es-PE') + '%' : '—';
+  const rows = mercados.map(m => {
+    const vxd = D.meta * impulsadorasPorMercado(m);
+    const cuota = num(cfg['cuota_vales_' + m]) || vxd * nDias;
+    const cj = D.pedidos.filter(p => p._canje && p.mercado === m && p.fecha <= hasta);
+    // Días efectivos: días que el mercado trabajó (marcó entrada o hizo canjes). El promedio usa solo
+    // días cerrados (antes de hoy) para que no baje en la mañana; si aún no hay ninguno, usa hoy.
+    const diasDe = lim => new Set([...cj.filter(p => p.fecha <= lim).map(p => p.fecha), ...D.asistencia.filter(a => a.mercado === m && a.marca === 'Entrada' && a.fecha <= lim).map(a => a.fecha)]);
+    let dias = diasDe(addDias(h, -1)), base = cj.filter(p => p.fecha < h);
+    if (!dias.size) { dias = diasDe(hasta); base = cj; }
+    const prom = dias.size ? base.length / dias.size : 0;
+    const consumo = Math.round(prom * nDias);
+    return { m, vxd, cuota, cj: cj.length, dEf: dias.size, prom, consumo, saldo: cuota - consumo };
+  });
+  const T = rows.reduce((t, r) => { ['vxd', 'cuota', 'cj', 'prom', 'consumo', 'saldo'].forEach(k => t[k] += r[k]); return t; }, { vxd: 0, cuota: 0, cj: 0, prom: 0, consumo: 0, saldo: 0 });
+  const barra = (a, b) => { const p = pct(a, b); return `<div class="mini"><span class="b"><i style="width:${Math.min(100, p)}%"></i></span><span>${p}%</span></div>`; };
+  const saldoTd = v => `<td>${v < 0 ? `<span class="st err">${fmt(v)}</span>` : fmt(v)}</td>`;
+  const fila = (r, foot) => `<tr><td>${foot ? 'Total' : `<b>${esc(r.m)}</b>`}</td>
+    <td class="sep">${r.vxd}</td><td>${nDias}</td><td><b>${fmt(r.cuota)}</b></td>
+    <td class="sep">${fmt(r.cj)}</td><td>${foot ? '' : r.dEf}</td><td><b>${fmtProm(r.prom)}</b></td><td>${pct1(r.prom, r.cuota)}</td>
+    <td class="sep"><b>${fmt(r.consumo)}</b></td><td>${barra(r.consumo, r.cuota)}</td>${saldoTd(r.saldo)}</tr>`;
+  $('#subProy').textContent = `${nDias} días de campaña (lunes a sábado, ${fCorta(ini)} al ${fCorta(fin)}) · consumo proyectado = canjes promedio por día efectivo × ${nDias} días · el promedio usa los días ya cerrados que el mercado trabajó (hoy no cuenta hasta mañana)`;
+  $('#kProy').innerHTML = `<div>Objetivo según cuota<b>${fmt(T.cuota)}</b></div><div>Avance despliegue<b>${fmt(T.cj)} · ${pct1(T.cj, T.cuota)}</b></div>`
+    + `<div>Consumo proyectado<b>${fmt(T.consumo)} · ${pct(T.consumo, T.cuota)}%</b></div><div>Saldo residual<b>${fmt(T.saldo)}</b></div>`;
+  $('#tProy').innerHTML = `<thead><tr><th></th><th colspan="3" class="g1 sep">Cuota</th><th colspan="4" class="g2 sep">Canjes efectivos</th><th colspan="3" class="g3 sep">Proyectado</th></tr>
+    <tr><th>Mercado</th><th class="sep">Vales x día</th><th>Nº días</th><th>Cuota total</th><th class="sep">Canjes</th><th title="Días ya cerrados que el mercado trabajó">Días efect.</th><th>Canjes prom</th><th title="Canjes promedio ÷ cuota total">Alcance prom</th>
+    <th class="sep">Consumo proyectado</th><th>Alcance proyectado</th><th title="Cuota total − consumo proyectado">Saldo residual</th></tr></thead>
+    <tbody>${rows.map(r => fila(r)).join('')}</tbody><tfoot>${fila(T, true)}</tfoot>`;
+}
 function tablaCuadre() {
   const cfg = D.config || {};
   const mercados = [...ORDEN_EFECTIVOS.filter(m => D.mercados.includes(m)), ...D.mercados.filter(m => !ORDEN_EFECTIVOS.includes(m))];
