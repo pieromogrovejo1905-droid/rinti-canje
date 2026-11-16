@@ -132,6 +132,9 @@
   .pkpis{display:flex;flex-wrap:wrap;gap:10px 28px;margin:4px 0 14px}
   .pkpis div{font-size:12.5px;color:var(--muted)} .pkpis b{display:block;font-size:22px;color:var(--ink)}
   table.proy thead tr:first-child th{font-size:11px;letter-spacing:.04em;padding-bottom:4px}
+  table.efe th.g1{background:#e8eefb;color:#2c3e8f} table.efe th.g2{background:#efe8f8;color:#5b3f8f}
+  table.efe td.sep,table.efe th.sep{border-left:1px solid var(--line)}
+  table.efe thead tr:first-child th{font-size:11px;letter-spacing:.04em;padding-bottom:4px}
   table.proy th.g1{background:#e8eefb;color:#2c3e8f} table.proy th.g2{background:#efe8f8;color:#5b3f8f} table.proy th.g3{background:#fdeee2;color:#9a4f12}
   table.proy td.sep,table.proy th.sep{border-left:1px solid var(--line)}
   table.proy .mini{justify-content:center} table.proy .mini .b{width:50px}
@@ -165,7 +168,7 @@
 </header>
 <div class="filters">
   <div class="seg" id="fPeriodo">
-    <button data-p="hoy" class="on">Hoy</button><button data-p="ayer">Ayer</button><button data-p="7d">7 días</button><button data-p="camp">Toda la campaña</button><button data-p="rango">Rango</button>
+    <button data-p="hoy">Hoy</button><button data-p="ayer">Ayer</button><button data-p="7d">7 días</button><button data-p="camp" class="on">Toda la campaña</button><button data-p="rango">Rango</button>
   </div>
   <span id="fRango" hidden><input type="date" id="fDesde"> – <input type="date" id="fHasta"></span>
   <select id="fMercado"><option value="">Todos los mercados</option></select>
@@ -205,7 +208,7 @@
   </section>
 
   <section class="card">
-    <h2>Equipo en campo · hoy</h2>
+    <h2 id="tituloEquipo">Equipo en campo · hoy</h2>
     <div class="sub" id="subEquipo">Asistencia y avance de cada impulsadora contra la meta del día</div>
     <div class="tw"><table id="tEquipo"></table></div>
   </section>
@@ -216,7 +219,7 @@
     <div class="tw"><table id="tMercado"></table></div>
   </section>
 
-  <section class="card" id="secStock">
+  <section class="card" id="secStock" hidden>
     <h2>Stock en puntos de venta</h2>
     <div class="sub" id="subStock"></div>
     <div class="pkpis" id="kStock"></div>
@@ -344,7 +347,7 @@ const driveId = u => (String(u).match(/\/d\/([^/]+)/) || [])[1];
 const thumb = (u, w = 400) => !u ? '' : u.startsWith('data:') ? u : driveId(u) ? `https://drive.google.com/thumbnail?id=${driveId(u)}&sz=w${w}` : u;
 
 let D = null;               // datos crudos
-const F = { p: 'hoy', desde: '', hasta: '', mercado: '', buscar: '' };
+const F = { p: 'camp', desde: '', hasta: '', mercado: '', buscar: '' };
 let galN = 24;
 
 /* ---------- carga ---------- */
@@ -465,9 +468,8 @@ function pintar() {
   tablaProyectado();
   graficoDia(P, dias, imp);
   graficoHora(canjes);
-  tablaEquipo();
+  tablaEquipo(P, A, dias);
   tablaMercado(P, A, I, dias);
-  tablaStock();
   tablaCuadre();
   if (INTERNO) listaInc(I, P);
   $('#secCuadre').style.gridTemplateColumns = INTERNO ? '' : '1fr';
@@ -538,32 +540,44 @@ function semaforo(v, meta) {
   const p = pct(v, meta);
   return p >= 100 ? `<span class="st ok">✔ ${p}%</span>` : p >= 60 ? `<span class="st warn">● ${p}%</span>` : `<span class="st err">▼ ${p}%</span>`;
 }
-function tablaEquipo() {
-  const h = hoy();
+function tablaEquipo(P, A, dias) {
+  const [a, b] = rango(), unDia = a === b, h = hoy();
+  const eq = (D.equipo || []).filter(e => e.rol === 'impulsadora' && (!F.mercado || e.mercado === F.mercado));
+  const jefes = (D.equipo || []).filter(e => e.rol !== 'impulsadora').map(e => e.nombre);
+  const deE = (r, e) => r.impulsadora === e.nombre || (r.mercado === e.mercado && !jefes.includes(r.impulsadora));
+  const cuando = unDia ? (a === h ? 'hoy' : 'el ' + fCorta(a)) : `del ${fCorta(a)} al ${fCorta(b)}`;
+  $('#tituloEquipo').textContent = 'Equipo en campo · ' + cuando;
   if (!INTERNO) {
-    const eqC = (D.equipo || []).filter(e => e.rol === 'impulsadora' && (!F.mercado || e.mercado === F.mercado));
-    const jefesC = (D.equipo || []).filter(e => e.rol !== 'impulsadora').map(e => e.nombre);
-    const llego = e => D.asistencia.some(a => a.fecha === h && a.marca === 'Entrada' && (a.impulsadora === e.nombre || (a.mercado === e.mercado && !jefesC.includes(a.impulsadora))));
-    const act = eqC.filter(llego).length;
-    $('#subEquipo').textContent = `${act} de ${eqC.length} impulsadoras activas hoy`;
-    $('#tEquipo').innerHTML = `<thead><tr><th>Impulsadora</th><th>Mercado</th><th>Estado hoy</th></tr></thead><tbody>${eqC.map(e => `<tr><td><b>${esc(e.nombre)}</b></td><td>${esc(e.mercado)}</td>
-      <td>${llego(e) ? '<span class="st ok">● Activa</span>' : '<span class="st na">○ Inactiva</span>'}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">Sin impulsadoras registradas</td></tr>'}</tbody>`;
+    const diasDe = e => new Set(A.filter(x => x.marca === 'Entrada' && deE(x, e)).map(x => x.fecha)).size;
+    const act = eq.filter(e => diasDe(e) > 0).length;
+    $('#subEquipo').textContent = unDia ? `${act} de ${eq.length} impulsadoras activas ${cuando}` : `Días trabajados de cada impulsadora ${cuando} (${dias.length} días de operación)`;
+    $('#tEquipo').innerHTML = `<thead><tr><th>Impulsadora</th><th>Mercado</th><th>${unDia ? 'Estado' : 'Días activa'}</th></tr></thead><tbody>${eq.map(e => `<tr><td><b>${esc(e.nombre)}</b></td><td>${esc(e.mercado)}</td>
+      <td>${unDia ? (diasDe(e) ? '<span class="st ok">● Activa</span>' : '<span class="st na">○ Inactiva</span>') : `${diasDe(e)} / ${dias.length}`}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">Sin impulsadoras registradas</td></tr>'}</tbody>`;
     return;
   }
-  const eq = (D.equipo || []).filter(e => e.rol === 'impulsadora' && (!F.mercado || e.mercado === F.mercado));
-  const A = D.asistencia.filter(a => a.fecha === h), P = D.pedidos.filter(p => p.fecha === h);
+  $('#subEquipo').textContent = unDia ? `Asistencia y avance de cada impulsadora contra la meta del día (${cuando})` : `Asistencia y avance de cada impulsadora ${cuando} · meta = ${D.meta} por día × ${dias.length} días de operación`;
+  if (unDia) {
+    const rows = eq.map(e => {
+      const ent = A.find(x => x.impulsadora === e.nombre && x.marca === 'Entrada');
+      const sal = A.filter(x => x.impulsadora === e.nombre && x.marca === 'Salida').pop();
+      const mis = P.filter(p => p.impulsadora === e.nombre), cj = mis.filter(p => p._canje).length;
+      return `<tr><td><b>${esc(e.nombre)}</b></td><td>${esc(ent ? ent.mercado : e.mercado)}</td>
+        <td>${ent ? `<span class="st ${tarde(ent.hora) ? 'warn' : 'ok'}">${tarde(ent.hora) ? '● Tarde' : '✔'} ${esc(ent.hora)}</span>` : '<span class="st err">✕ Sin marcar</span>'}</td>
+        <td>${sal ? esc(sal.hora) : '<span style="color:var(--muted)">—</span>'}</td>
+        <td class="n">${mis.length}</td><td class="n"><b>${cj}</b> / ${D.meta}</td><td class="n">${semaforo(cj, D.meta)}</td></tr>`;
+    });
+    $('#tEquipo').innerHTML = `<thead><tr><th>Impulsadora</th><th>Mercado</th><th>Entrada</th><th>Salida</th><th class="n">Pedidos</th><th class="n">Canjes</th><th class="n">Avance</th></tr></thead>
+      <tbody>${rows.join('') || '<tr><td colspan="7" class="empty">Sin impulsadoras registradas</td></tr>'}</tbody>`;
+    return;
+  }
   const rows = eq.map(e => {
-    const ent = A.find(a => a.impulsadora === e.nombre && a.marca === 'Entrada');
-    const sal = A.filter(a => a.impulsadora === e.nombre && a.marca === 'Salida').pop();
-    const mis = P.filter(p => p.impulsadora === e.nombre);
-    const cj = mis.filter(p => p._canje).length;
-    const merc = ent ? ent.mercado : e.mercado;
-    return `<tr><td><b>${esc(e.nombre)}</b></td><td>${esc(merc)}</td>
-      <td>${ent ? `<span class="st ${tarde(ent.hora) ? 'warn' : 'ok'}">${tarde(ent.hora) ? '● Tarde' : '✔'} ${esc(ent.hora)}</span>` : '<span class="st err">✕ Sin marcar</span>'}</td>
-      <td>${sal ? esc(sal.hora) : '<span style="color:var(--muted)">—</span>'}</td>
-      <td class="n">${mis.length}</td><td class="n"><b>${cj}</b> / ${D.meta}</td><td class="n">${semaforo(cj, D.meta)}</td></tr>`;
+    const ents = A.filter(x => x.impulsadora === e.nombre && x.marca === 'Entrada');
+    const dTrab = new Set(ents.map(x => x.fecha)).size, tard = ents.filter(x => tarde(x.hora)).length;
+    const mis = P.filter(p => p.impulsadora === e.nombre), cj = mis.filter(p => p._canje).length, meta = D.meta * dias.length;
+    return `<tr><td><b>${esc(e.nombre)}</b></td><td>${esc(e.mercado)}</td><td class="n">${dTrab} / ${dias.length}</td>
+      <td class="n">${tard || '<span style="color:var(--muted)">0</span>'}</td><td class="n">${mis.length}</td><td class="n"><b>${cj}</b> / ${meta}</td><td class="n">${semaforo(cj, meta)}</td></tr>`;
   });
-  $('#tEquipo').innerHTML = `<thead><tr><th>Impulsadora</th><th>Mercado</th><th>Entrada</th><th>Salida</th><th class="n">Pedidos</th><th class="n">Canjes</th><th class="n">Avance</th></tr></thead>
+  $('#tEquipo').innerHTML = `<thead><tr><th>Impulsadora</th><th>Mercado</th><th class="n">Días trabajados</th><th class="n">Tardanzas</th><th class="n">Pedidos</th><th class="n">Canjes</th><th class="n">Avance</th></tr></thead>
     <tbody>${rows.join('') || '<tr><td colspan="7" class="empty">Sin impulsadoras registradas</td></tr>'}</tbody>`;
 }
 function tablaMercado(P, A, I, dias) {
@@ -580,8 +594,8 @@ function tablaMercado(P, A, I, dias) {
     };
     for (const k in tot) tot[k] += r[k];
     const nombres = [...new Set([...(D.equipo || []).filter(e => e.mercado === m && e.rol === 'impulsadora').map(e => e.nombre)])].join(', ');
-    return fila(m, nombres, r);
-  });
+    return { av: r.cj / (r.meta * dias.length || 1), cj: r.cj, html: fila(m, nombres, r) };
+  }).sort((x, y) => y.av - x.av || y.cj - x.cj).map(x => x.html);
   function fila(m, nombres, r, foot) {
     const p = pct(r.cj, r.meta * dias.length);
     const req = D.reglas[m];
@@ -591,38 +605,52 @@ function tablaMercado(P, A, I, dias) {
       <td class="n"><div class="mini"><span>${p}%</span><span class="b"><i style="width:${Math.min(100, p)}%"></i></span></div></td>
       ${INTERNO ? `<td class="n">${r.inc || '<span style="color:var(--muted)">0</span>'}</td>` : ''}</tr>`;
   }
-  $('#subMercado').textContent = `Meta: ${D.meta} canjes por impulsadora por día` + (dias.length > 1 ? ` · ${dias.length} días de operación: el avance compara el promedio diario con la meta` : '');
+  $('#subMercado').textContent = `Meta: ${D.meta} canjes por impulsadora por día` + (dias.length > 1 ? ` · ${dias.length} días de operación: el avance compara el promedio diario con la meta` : '') + ' · ordenado por avance';
   $('#tMercado').innerHTML = `<thead><tr><th>Mercado</th><th class="n" title="Sacos Ricocan y/o Ricocat para 1 vale">Sacos x vale</th><th class="n">Asistencia</th><th class="n">Pedidos</th><th class="n">Sacos Ricocan</th><th class="n">Sacos Ricocat</th><th class="n">Canjes</th>${dias.length > 1 ? '<th class="n">Prom. / día</th>' : ''}<th class="n">Vales</th><th class="n">Meta diaria</th><th class="n">Avance</th>${INTERNO ? '<th class="n">Incid.</th>' : ''}</tr></thead>
     <tbody>${rows.join('')}</tbody>${mercados.length > 1 ? `<tfoot>${fila('Total', '', tot)}</tfoot>` : ''}`;
 }
-// Tabla que pidieron supervisores y coordinador: canjes por mercado y día desde el día 1 efectivo.
-// No depende de los filtros de arriba.
+// Periodo del filtro recortado a la campaña (desde el día 1 efectivo hasta hoy o el cierre).
+function periodoCamp() {
+  const [a, b] = rango(), h = hoy(), ini = C.INICIO_EFECTIVO || D.inicio || h;
+  let fin = b < h ? b : h; if (D.fin && D.fin < fin) fin = D.fin;
+  return { ini, a: a > ini ? a : ini, b: fin };
+}
+const mercadosVista = () => [...ORDEN_EFECTIVOS.filter(m => D.mercados.includes(m)), ...D.mercados.filter(m => !ORDEN_EFECTIVOS.includes(m))].filter(m => !F.mercado || m === F.mercado);
+// Canjes por mercado y día (Día 1 = inicio efectivo), agrupados por semana, en el periodo del filtro.
+// Ordenada de mayor a menor por el acumulado.
 const ORDEN_EFECTIVOS = ['Caquetá', 'Unicachi Norte Minorista', 'Fiori', 'Mercado Productores', 'Huamantanga', 'Unicachi Norte Mayorista', 'Parada', 'Unicachi Sur', 'Ciudad de Dios'];
 function tablaEfectivos() {
-  const ini = C.INICIO_EFECTIVO || D.inicio || hoy();
-  const fin = D.fin && D.fin < hoy() ? D.fin : hoy();
-  const fechas = diasHabiles(ini, fin, new Set(D.pedidos.filter(p => p._canje).map(p => p.fecha)));
-  if (!fechas.length) fechas.push(ini);
-  const mercados = [...ORDEN_EFECTIVOS.filter(m => D.mercados.includes(m)), ...D.mercados.filter(m => !ORDEN_EFECTIVOS.includes(m))];
+  const { ini, a, b } = periodoCamp();
+  const conCanje = new Set(D.pedidos.filter(p => p._canje).map(p => p.fecha));
+  const todas = diasHabiles(ini, b < ini ? ini : b, conCanje);          // días de campaña hasta el fin del periodo
+  let fechas = todas.filter(f => f >= a && f <= b);
+  if (!fechas.length) fechas = [b >= ini ? b : ini];
+  const nDia = f => todas.indexOf(f) + 1 || 1;
+  const sem = f => Math.floor((new Date(f + 'T12:00:00Z') - new Date(ini + 'T12:00:00Z')) / (7 * 864e5)) + 1;
+  const mercados = mercadosVista();
   const nD = fechas.length, ult = fechas[nD - 1];
   const rows = mercados.map(m => {
     const meta = D.meta * impulsadorasPorMercado(m);
     const cnt = fechas.map(f => D.pedidos.filter(p => p._canje && p.mercado === m && p.fecha === f).length);
-    const acum = cnt.reduce((a, b) => a + b, 0);
-    return { m, meta, cnt, alc: pct(cnt[nD - 1], meta), acu: pct(acum, meta * nD) };
-  });
-  const tMeta = rows.reduce((s, r) => s + r.meta, 0);
-  const tCnt = fechas.map((_, i) => rows.reduce((s, r) => s + r.cnt[i], 0));
-  const tot = { alc: pct(tCnt[nD - 1], tMeta), acu: pct(tCnt.reduce((a, b) => a + b, 0), tMeta * nD) };
+    const acum = cnt.reduce((x, y) => x + y, 0);
+    return { m, meta, cnt, acum, alc: pct(cnt[nD - 1], meta), acu: pct(acum, meta * nD) };
+  }).sort((x, y) => y.acu - x.acu || y.acum - x.acum);
+  const tMeta = rows.reduce((t, r) => t + r.meta, 0);
+  const tCnt = fechas.map((_, i) => rows.reduce((t, r) => t + r.cnt[i], 0));
+  const tot = { alc: pct(tCnt[nD - 1], tMeta), acu: pct(tCnt.reduce((x, y) => x + y, 0), tMeta * nD) };
   // Color tipo Excel: rojo el más bajo, verde el más alto de cada columna (100% o más siempre verde)
   const escala = vals => { const mn = Math.min(...vals), mx = Math.max(...vals); return v => v >= 100 ? 120 : mx === mn ? (v > 0 ? 120 : 0) : (v - mn) / (mx - mn) * 120; };
-  const all = [...rows.map(r => r.alc), tot.alc], allA = [...rows.map(r => r.acu), tot.acu];
-  const hA = escala(all), hB = escala(allA);
+  const hA = escala([...rows.map(r => r.alc), tot.alc]), hB = escala([...rows.map(r => r.acu), tot.acu]);
   const celda = (v, h) => `<td class="pc" style="background:hsl(${Math.round(h(v))},68%,70%)">${v}%</td>`;
-  $('#subEfectivos').textContent = `Día 1 = ${fCorta(ini)} · Día ${nD} = ${ult === hoy() ? 'hoy, en curso' : fCorta(ult)} · Meta: ${D.meta} vales por impulsadora por día · lunes a sábado`;
-  $('#tEfectivos').innerHTML = `<thead><tr><th>Mercado</th><th>Vales x día</th>${fechas.map((f, i) => `<th title="${fCorta(f)}">Día ${i + 1}<div style="font-weight:400;color:var(--muted);font-size:11px">${fCorta(f)}</div></th>`).join('')}<th>Alcance día ${nD}</th><th>Acumulado</th></tr></thead>
-    <tbody>${rows.map(r => `<tr><td><b>${esc(r.m)}</b></td><td>${r.meta}</td>${r.cnt.map(c => `<td><b>${c}</b></td>`).join('')}${celda(r.alc, hA)}${celda(r.acu, hB)}</tr>`).join('')}</tbody>
-    <tfoot><tr><td>Total</td><td>${tMeta}</td>${tCnt.map(c => `<td>${c}</td>`).join('')}${celda(tot.alc, hA)}${celda(tot.acu, hB)}</tr></tfoot>`;
+  // Bloques semanales: SEM 1 = días 1 a 6, SEM 2 = días 7 a 12, ...
+  const semanas = []; fechas.forEach((f, i) => { const k = sem(f); if (!semanas.length || semanas[semanas.length - 1].k !== k) semanas.push({ k, n: 0, i }); semanas[semanas.length - 1].n++; });
+  const ini_s = new Set(semanas.map(w => w.i));
+  const sep = i => ini_s.has(i) ? ' class="sep"' : '';
+  $('#subEfectivos').textContent = `Día 1 = ${fCorta(ini)} · periodo: ${fechas.length === 1 ? 'Día ' + nDia(fechas[0]) : `Día ${nDia(fechas[0])} al Día ${nDia(ult)}`}${ult === hoy() ? ' (hoy en curso)' : ''} · Meta: ${D.meta} vales por impulsadora por día · lunes a sábado · ordenado por acumulado`;
+  $('#tEfectivos').innerHTML = `<thead><tr><th></th><th></th>${semanas.map((w, x) => `<th colspan="${w.n}" class="sep g${x % 2 ? 2 : 1}">SEM ${w.k}</th>`).join('')}<th class="sep"></th><th></th></tr>
+    <tr><th>Mercado</th><th>Vales x día</th>${fechas.map((f, i) => `<th${sep(i)} title="${fCorta(f)}">Día ${nDia(f)}<div style="font-weight:400;color:var(--muted);font-size:11px">${fCorta(f)}</div></th>`).join('')}<th class="sep">Alcance día ${nDia(ult)}</th><th>Acumulado</th></tr></thead>
+    <tbody>${rows.map(r => `<tr><td><b>${esc(r.m)}</b></td><td>${r.meta}</td>${r.cnt.map((c, i) => `<td${sep(i)}><b>${c}</b></td>`).join('')}${celda(r.alc, hA).replace('<td class="pc"', '<td class="pc sep"')}${celda(r.acu, hB)}</tr>`).join('')}</tbody>
+    <tfoot><tr><td>Total</td><td>${tMeta}</td>${tCnt.map((c, i) => `<td${sep(i)}>${c}</td>`).join('')}${celda(tot.alc, hA).replace('<td class="pc"', '<td class="pc sep"')}${celda(tot.acu, hB)}</tr></tfoot>`;
 }
 // Kardex: cuota de vales físicos por mercado (hoja Config, filas cuota_vales_<mercado>) vs vales ya entregados.
 // Es el total de la campaña, no depende de los filtros de fecha.
@@ -633,22 +661,22 @@ function tablaProyectado() {
   const ini = D.inicio || C.INICIO_EFECTIVO;
   const fin = D.fin || ini;
   const nDias = diasHabiles(ini, fin).length;            // días de campaña (lunes a sábado)
-  const h = hoy(), hasta = fin < h ? fin : h;
-  const mercados = [...ORDEN_EFECTIVOS.filter(m => D.mercados.includes(m)), ...D.mercados.filter(m => !ORDEN_EFECTIVOS.includes(m))];
+  const h = hoy(), per = periodoCamp(), desde = per.a, hasta = per.b;
+  const mercados = mercadosVista();
   const pct1 = (a, b) => b ? (Math.round(a / b * 1000) / 10).toLocaleString('es-PE') + '%' : '—';
   const rows = mercados.map(m => {
     const vxd = D.meta * impulsadorasPorMercado(m);
     const cuota = num(cfg['cuota_vales_' + m]) || vxd * nDias;
-    const cj = D.pedidos.filter(p => p._canje && p.mercado === m && p.fecha <= hasta);
+    const cj = D.pedidos.filter(p => p._canje && p.mercado === m && p.fecha >= desde && p.fecha <= hasta);
     // Días efectivos: días que el mercado trabajó (marcó entrada o hizo canjes). El promedio usa solo
     // días cerrados (antes de hoy) para que no baje en la mañana; si aún no hay ninguno, usa hoy.
-    const diasDe = lim => new Set([...cj.filter(p => p.fecha <= lim).map(p => p.fecha), ...D.asistencia.filter(a => a.mercado === m && a.marca === 'Entrada' && a.fecha <= lim).map(a => a.fecha)]);
+    const diasDe = lim => new Set([...cj.filter(p => p.fecha <= lim).map(p => p.fecha), ...D.asistencia.filter(a => a.mercado === m && a.marca === 'Entrada' && a.fecha >= desde && a.fecha <= lim).map(a => a.fecha)]);
     let dias = diasDe(addDias(h, -1)), base = cj.filter(p => p.fecha < h);
     if (!dias.size) { dias = diasDe(hasta); base = cj; }
     const prom = dias.size ? base.length / dias.size : 0;
     const consumo = Math.round(prom * nDias);
     return { m, vxd, cuota, cj: cj.length, dEf: dias.size, prom, consumo, saldo: cuota - consumo };
-  });
+  }).sort((x, y) => y.consumo / (y.cuota || 1) - x.consumo / (x.cuota || 1) || y.consumo - x.consumo);
   const T = rows.reduce((t, r) => { ['vxd', 'cuota', 'cj', 'prom', 'consumo', 'saldo'].forEach(k => t[k] += r[k]); return t; }, { vxd: 0, cuota: 0, cj: 0, prom: 0, consumo: 0, saldo: 0 });
   const barra = (a, b) => { const p = pct(a, b); return `<div class="mini"><span class="b"><i style="width:${Math.min(100, p)}%"></i></span><span>${p}%</span></div>`; };
   const saldoTd = v => `<td>${v < 0 ? `<span class="st err">${fmt(v)}</span>` : fmt(v)}</td>`;
@@ -656,7 +684,7 @@ function tablaProyectado() {
     <td class="sep">${r.vxd}</td><td>${nDias}</td><td><b>${fmt(r.cuota)}</b></td>
     <td class="sep">${fmt(r.cj)}</td><td>${foot ? '' : r.dEf}</td><td><b>${fmtProm(r.prom)}</b></td><td>${pct1(r.prom, r.cuota)}</td>
     <td class="sep"><b>${fmt(r.consumo)}</b></td><td>${barra(r.consumo, r.cuota)}</td>${saldoTd(r.saldo)}</tr>`;
-  $('#subProy').textContent = `${nDias} días de campaña (lunes a sábado, ${fCorta(ini)} al ${fCorta(fin)}) · consumo proyectado = canjes promedio por día efectivo × ${nDias} días · el promedio usa los días ya cerrados que el mercado trabajó (hoy no cuenta hasta mañana)`;
+  $('#subProy').textContent = `${nDias} días de campaña (lunes a sábado, ${fCorta(ini)} al ${fCorta(fin)}) · consumo proyectado = canjes promedio por día efectivo × ${nDias} días · el promedio usa los días ya cerrados que el mercado trabajó (hoy no cuenta hasta mañana) · ritmo del periodo ${desde === hasta ? fCorta(desde) : fCorta(desde) + ' al ' + fCorta(hasta)} · ordenado por alcance proyectado`;
   $('#kProy').innerHTML = `<div>Objetivo según cuota<b>${fmt(T.cuota)}</b></div><div>Avance despliegue<b>${fmt(T.cj)} · ${pct1(T.cj, T.cuota)}</b></div>`
     + `<div>Consumo proyectado<b>${fmt(T.consumo)} · ${pct(T.consumo, T.cuota)}%</b></div><div>Saldo residual<b>${fmt(T.saldo)}</b></div>`;
   $('#tProy').innerHTML = `<thead><tr><th></th><th colspan="3" class="g1 sep">Cuota</th><th colspan="4" class="g2 sep">Canjes efectivos</th><th colspan="3" class="g3 sep">Proyectado</th></tr>
@@ -704,9 +732,9 @@ function tablaStock() {
 }
 function tablaCuadre() {
   const cfg = D.config || {};
-  const mercados = [...ORDEN_EFECTIVOS.filter(m => D.mercados.includes(m)), ...D.mercados.filter(m => !ORDEN_EFECTIVOS.includes(m))];
+  const mercados = mercadosVista();
   const t = { c: 0, u: 0, e: 0, sinCuota: 0 };
-  const h = hoy(), finC = D.fin && D.fin < h ? D.fin : h;
+  const h = hoy(), finC = periodoCamp().b; // acumulado hasta el fin del periodo elegido
   const nDias = D.inicio ? diasHabiles(D.inicio, finC).length : 0;
   const fila = (m, cuota, usados, esperado, foot) => {
     const tiene = cuota > 0, p = tiene ? pct(usados, cuota) : 0;
@@ -720,14 +748,14 @@ function tablaCuadre() {
   };
   const rows = mercados.map(m => {
     const cuota = num(cfg['cuota_vales_' + m]);
-    const usados = D.pedidos.filter(p => p.mercado === m).reduce((s, p) => s + p._vales, 0);
+    const usados = D.pedidos.filter(p => p.mercado === m && p.fecha <= finC).reduce((s, p) => s + p._vales, 0);
     const esperado = Math.min(cuota || Infinity, D.meta * impulsadorasPorMercado(m) * nDias);
     t.c += cuota; t.u += usados; t.e += esperado; if (!cuota) t.sinCuota++;
     return fila(m, cuota, usados, esperado);
   });
-  $('#subCuadre').textContent = `Vales entregados desde ${D.inicio ? fCorta(D.inicio) : 'el inicio'} contra los vales físicos asignados a cada mercado · esperado = ${D.meta} por día × ${nDias} día${nDias === 1 ? '' : 's'} de trabajo (lunes a sábado, hoy incluido)${D.fin ? ` · cierre ${fCorta(D.fin)}` : ''}`
+  $('#subCuadre').textContent = `Vales entregados desde ${D.inicio ? fCorta(D.inicio) : 'el inicio'} contra los vales físicos asignados a cada mercado · esperado = ${D.meta} por día × ${nDias} día${nDias === 1 ? '' : 's'} de trabajo (lunes a sábado) · acumulado al ${finC === h ? 'día de hoy' : fCorta(finC)}${D.fin ? ` · cierre ${fCorta(D.fin)}` : ''}`
     + (t.sinCuota ? ` · falta cargar la cuota de ${t.sinCuota} mercado${t.sinCuota === 1 ? '' : 's'}` : '');
-  $('#tCuadre').innerHTML = `<thead><tr><th>Mercado</th><th class="n">Cuota (vales físicos)</th><th class="n" title="Lo que debería haber salido a la fecha según la meta diaria">Esperado a hoy</th><th class="n">Entregados</th><th class="n">vs esperado</th><th class="n">Saldo</th><th class="n">Consumo</th></tr></thead>
+  $('#tCuadre').innerHTML = `<thead><tr><th>Mercado</th><th class="n">Cuota (vales físicos)</th><th class="n" title="Lo que debería haber salido a la fecha según la meta diaria">Esperado a la fecha</th><th class="n">Entregados</th><th class="n">vs esperado</th><th class="n">Saldo</th><th class="n">Consumo</th></tr></thead>
     <tbody>${rows.join('')}</tbody><tfoot>${fila('', t.sinCuota ? 0 : t.c, t.u, t.e, true)}</tfoot>`;
 }
 function listaInc(I, P) {
