@@ -124,6 +124,9 @@
   .valbox .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
   .valbox button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:9px 14px;cursor:pointer}
   .valbox .bok{background:var(--ok);color:#fff} .valbox .bobs{background:var(--err);color:#fff} .valbox .bpen{background:#fff;border:1px solid var(--line);color:var(--ink2)}
+  .valbox label.cl{display:block;font-size:13px;font-weight:600;color:var(--ink2);margin-top:10px}
+  .valbox label.cl input{font-weight:400}
+  .valbox input[type=file]{border:0;padding:6px 0;background:transparent}
   .valbox input{font:inherit;width:100%;padding:9px 10px;border:1px solid #cfd3ea;border-radius:10px;margin-top:8px}
   body.cliente .solo-int{display:none!important}
   table.efe th,table.efe td{text-align:center;white-space:nowrap}
@@ -780,11 +783,11 @@ function tablaDetalle(P) {
   const q = F.buscar.toLowerCase();
   const rows = P.filter(p => !q || [p.codigos_vale, p.cliente, p.n_comprobante, p.impulsadora, p.puesto, p.mercado].join(' ').toLowerCase().includes(q))
     .sort((a, b) => (b.fecha + b.hora).localeCompare(a.fecha + a.hora));
-  const est = p => !p._canje ? '<span class="st na">Pedido</span>' : p.validacion === 'Observado' ? '<span class="st err">✕ Observado</span>'
+  const est = p => !p._canje ? (completable(p) ? '<span class="st warn">● Completar canje</span>' : '<span class="st na">Pedido</span>') : p.validacion === 'Observado' ? '<span class="st err">✕ Observado</span>'
     : p.validacion === 'Válido' ? '<span class="st ok">✔ Validado</span>' : !p._cumple ? '<span class="st warn">● Revisar</span>'
     : INTERNO ? '<span class="st warn">● Por validar</span>' : '<span class="st na">En revisión</span>';
   $('#tDetalle').innerHTML = `<thead><tr><th>Fecha</th><th>Hora</th><th>Mercado</th><th>Impulsadora</th><th>Cliente</th><th>DNI</th><th>Comprobante</th><th class="n">Ricocan</th><th class="n">Ricocat</th><th class="n">Vales</th><th>Código vale</th><th>Estado</th></tr></thead>
-    <tbody>${rows.slice(0, 300).map(p => `<tr${p._canje ? ` data-id="${esc(p.id)}" style="cursor:pointer"` : ''}><td>${fCorta(p.fecha)}</td><td>${esc(p.hora)}</td><td>${esc(p.mercado)}</td><td>${esc(p.impulsadora)}</td>
+    <tbody>${rows.slice(0, 300).map(p => `<tr${p._canje || completable(p) ? ` data-id="${esc(p.id)}" style="cursor:pointer"` : ''}><td>${fCorta(p.fecha)}</td><td>${esc(p.hora)}</td><td>${esc(p.mercado)}</td><td>${esc(p.impulsadora)}</td>
       <td>${esc(p.cliente)}${p.puesto ? `<div style="color:var(--muted);font-size:12px">${esc(p.puesto)}</div>` : ''}</td><td>${esc(p.dni || '')}</td><td>${esc(p.tipo_comprobante)} ${esc(p.n_comprobante)}</td>
       <td class="n">${p._rc}</td><td class="n">${p._rt}</td><td class="n">${p._vales || ''}</td><td><b>${esc(p.codigos_vale)}</b></td><td>${est(p)}</td></tr>`).join('')
       || '<tr><td colspan="12" class="empty">Sin registros</td></tr>'}</tbody>`
@@ -792,10 +795,23 @@ function tablaDetalle(P) {
 }
 
 /* ---------- detalle de canje ---------- */
+// Pedido guardado sin vale que con la regla vigente sí llega a los sacos del canje (solo interno).
+const completable = p => INTERNO && !p._canje && p._tot >= (D.reglas[p.mercado] || Infinity);
+async function comprimir(file, max = 1280, q = 0.7) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', q);
+  } finally { URL.revokeObjectURL(url); }
+}
 function abrir(id) {
   const p = D.pedidos.find(x => x.id === id); if (!p) return;
   const img = (u, t) => u ? `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(thumb(u, 800))}" alt="${t}"><span>${t}</span></a>` : '';
-  $('#mbox').innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;align-items:start"><div><h2 style="margin:0">Canje · vale ${esc(p.codigos_vale)}</h2>
+  const comp = completable(p);
+  $('#mbox').innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;align-items:start"><div><h2 style="margin:0">${p._canje ? `Canje · vale ${esc(p.codigos_vale)}` : 'Pedido sin vale'}</h2>
     <div style="color:var(--muted)">${esc(p.mercado)} · ${esc(p.impulsadora)} · ${fCorta(p.fecha)} ${esc(p.hora)}</div></div><button class="tbtn" id="mClose">Cerrar</button></div>
     <dl class="kv" style="margin-top:14px"><dt>Cliente</dt><dd>${esc(p.cliente)}${p.puesto ? ' · ' + esc(p.puesto) : ''}</dd>${p.dni ? `<dt>DNI</dt><dd>${esc(p.dni)}</dd>` : ''}
     <dt>Sacos pedidos en el mercado</dt><dd>${esc(p.sacos_requeridos || D.reglas[p.mercado] || '')}</dd>
@@ -803,12 +819,21 @@ function abrir(id) {
     <dt>Sacos</dt><dd>Ricocan 22 kg: ${p._rc - p._rc15}${p._rc15 ? ` · Ricocan 15 kg: ${p._rc15}` : ''} · Ricocat 15 kg: ${p._rt - p._rt9}${p._rt9 ? ` · Ricocat 9 kg: ${p._rt9}` : ''} · ${fmt(p._kg)} kg</dd>
     <dt>Vales</dt><dd>${p._vales}</dd><dt>Compra en Lima</dt><dd>${esc(p.compra_lima)}</dd>
     <dt>Mecánica</dt><dd>${esc(p.cumple_mecanica)}${INTERNO && p.alertas ? ' · ' + esc(p.alertas) : ''}</dd>
-    <dt>Validación</dt><dd>${valTxt(p)}</dd>${INTERNO && p.observaciones ? `<dt>Observaciones</dt><dd>${esc(p.observaciones)}</dd>` : ''}${INTERNO && p.celular ? `<dt>Celular</dt><dd>${esc(p.celular)}</dd>` : ''}</dl>
+    ${p._canje ? `<dt>Validación</dt><dd>${valTxt(p)}</dd>` : ''}${INTERNO && p.observaciones ? `<dt>Observaciones</dt><dd>${esc(p.observaciones)}</dd>` : ''}${INTERNO && p.celular ? `<dt>Celular</dt><dd>${esc(p.celular)}</dd>` : ''}</dl>
     <div class="imgs">${img(p.foto_comprobante, 'Foto 1 · Boleta / factura / nota de venta')}${img(p.foto_entrega, 'Foto 2 · Cliente con el vale')}${img(p.firma, 'Firma del cliente')}</div>
     ${INTERNO && p._canje ? `<div class="valbox"><b>Validar este canje</b><div style="color:var(--muted);font-size:13px">Revisa las fotos: boleta con los sacos y el cliente con el vale.</div>
       <input id="vNota" placeholder="Motivo (obligatorio si es Observado)">
       <div class="acts"><button class="bok" data-val="Válido">✔ Válido</button><button class="bobs" data-val="Observado">✕ Observado</button>${p.validacion && p.validacion !== 'Pendiente' ? '<button class="bpen" data-val="Pendiente">Volver a pendiente</button>' : ''}</div>
-      <div id="vErr" style="color:var(--err);font-size:13px;margin-top:6px"></div></div>` : ''}`;
+      <div id="vErr" style="color:var(--err);font-size:13px;margin-top:6px"></div></div>` : ''}
+    ${comp ? `<div class="valbox"><b>Completar canje</b><div style="color:var(--muted);font-size:13px">Se guardó como pedido porque ese día la regla era ${esc(p.sacos_requeridos || '?')} sacos. Con la regla vigente (${D.reglas[p.mercado]} sacos) sí es canje. Ingresa el vale entregado y la foto; luego valídalo como cualquier canje.</div>
+      <label class="cl">Código del vale (7 números)<input id="cCod" inputmode="numeric" maxlength="9" placeholder="Ej. 1234567"></label>
+      <label class="cl">DNI del cliente${p.dni && !/^\d{8}$/.test(p.dni) ? ` <span style="color:var(--err)">(guardado con ${String(p.dni).length} dígitos: revisa si le falta un 0 adelante)</span>` : ''}<input id="cDni" inputmode="numeric" maxlength="12" value="${esc(p.dni || '')}"></label>
+      <label class="cl">Foto del cliente con el vale (obligatoria)<input id="cFoto" type="file" accept="image/*"></label>
+      <label class="cl">Firma o foto de la planilla firmada (opcional)<input id="cFirma" type="file" accept="image/*"></label>
+      <label class="cl">Nota (opcional)<input id="cNota" placeholder="Ej. vale entregado el 9/11, foto enviada por la impulsadora"></label>
+      <div class="acts"><button class="bok" id="cGo">Guardar como canje</button></div>
+      <div id="cErr" style="color:var(--err);font-size:13px;margin-top:6px"></div></div>` : ''}`;
+  if (comp) $('#cGo').onclick = () => completar(p);
   $('#modal').hidden = false;
   $('#mClose').onclick = () => $('#modal').hidden = true;
   $('#mbox').querySelectorAll('[data-val]').forEach(b => b.onclick = () => validar(p, b.dataset.val));
@@ -817,6 +842,24 @@ function valTxt(p) {
   if (p.validacion === 'Válido') return '<span class="st ok">✔ Validado' + (INTERNO && p.validado_por ? ' por ' + esc(p.validado_por) + (p.validado_en ? ' · ' + esc(p.validado_en.slice(5, 16)) : '') : ' por Free') + '</span>';
   if (p.validacion === 'Observado') return '<span class="st err">✕ Observado' + (INTERNO && p.validado_por ? ' por ' + esc(p.validado_por) : '') + '</span>';
   return INTERNO ? '<span class="st warn">● Pendiente de validar</span>' : '<span class="st na">En revisión por Free</span>';
+}
+async function completar(p) {
+  const err = t => { $('#cErr').textContent = t; };
+  const codigo = $('#cCod').value.replace(/[\s-]/g, ''), dni = $('#cDni').value.trim(), f = $('#cFoto').files[0], g = $('#cFirma').files[0];
+  if (!/^\d{7}$/.test(codigo)) return err('El código del vale tiene 7 números');
+  if (!/^\d{8}$/.test(dni) && !/^[A-Za-z0-9]{9,12}$/.test(dni)) return err('El DNI debe tener 8 dígitos');
+  if (!f) return err('Falta la foto del cliente con el vale');
+  err('Guardando…'); $('#cGo').disabled = true;
+  try {
+    const foto_entrega = await comprimir(f), firma = g ? await comprimir(g) : '';
+    if (!DEMO) {
+      const r = await postAPI({ tipo: 'completar_canje', id: p.id, codigo, dni, foto_entrega, firma, nota: $('#cNota').value.trim(), usuario: CI.usuario, clave: CI.clave });
+      if (!r.ok) { err(r.error || 'No se pudo guardar'); $('#cGo').disabled = false; return; }
+      Object.assign(p, r.pedido);
+    } else Object.assign(p, { es_canje: 'SÍ', vales: 1, codigos_vale: codigo, dni, foto_entrega, firma, validacion: 'Pendiente', cumple_mecanica: 'SÍ', sacos_requeridos: D.reglas[p.mercado] });
+    p._vales = num(p.vales); p._canje = true; p._cumple = p.cumple_mecanica === 'SÍ' && p.validacion !== 'Observado';
+    pintar(); abrir(p.id);
+  } catch { err('Sin conexión. Intenta de nuevo.'); $('#cGo').disabled = false; }
 }
 async function validar(p, valor) {
   const nota = ($('#vNota').value || '').trim();
