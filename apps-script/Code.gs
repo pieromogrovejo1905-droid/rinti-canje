@@ -204,6 +204,7 @@ function doPost(e) {
       return out_(Object.assign(datos_(true), { usuario: u }));
     }
     if (b.tipo === 'validar') return out_(validar_(b, u));
+    if (b.tipo === 'completar_canje') return out_(completarCanje_(b, u));
     const fn = { asistencia: asistencia_, pedido: pedido_, incidencia: incidencia_, cierre: cierre_, stock: stock_ }[b.tipo];
     if (!fn) return out_({ ok: false, code: 'val', error: 'Tipo de registro desconocido' });
     if (!b.id) return out_({ ok: false, code: 'val', error: 'Falta el id del registro' });
@@ -263,6 +264,54 @@ function validar_(b, u) {
       sh.getRange(fila, col('observaciones')).setValue((obs ? obs + ' | ' : '') + 'Validación (' + u.nombre + '): ' + nota);
     }
     return { ok: true, validacion: valor, validado_por: valor === 'Pendiente' ? '' : u.nombre };
+  });
+}
+
+/**
+ * Convierte en canje un pedido que se guardó sin vale pero que cumple la regla de sacos vigente
+ * (por ejemplo, pedidos registrados antes de que bajara la mecánica del mercado).
+ * Solo supervisores y coordinador. Pide código del vale y foto del cliente con el vale;
+ * la firma es opcional. Queda Pendiente para validarlo como cualquier canje.
+ */
+function completarCanje_(b, u) {
+  if (!esJefe_(u)) throw val_('Solo supervisores y coordinador pueden completar canjes');
+  const p = leer_('Pedidos').find(function (x) { return x.id === String(b.id); });
+  if (!p) throw val_('No se encontró el pedido');
+  if (p.es_canje === 'SÍ') throw val_('Este registro ya es un canje');
+  const req = SACOS_POR_MERCADO[p.mercado], total = entero_(p.sacos_total);
+  if (!req || total < req) throw val_('El pedido tiene ' + total + ' sacos y en ' + p.mercado + ' se piden ' + req);
+  const codigo = normCodigo_(b.codigo);
+  const errVale = errorVale_(codigo, p.mercado);
+  if (errVale) throw val_(errVale);
+  const dni = normDni_(b.dni || p.dni);
+  if (!dniValido_(dni)) throw val_('El DNI debe tener 8 dígitos (o carné de extranjería de 9 a 12 caracteres)');
+  if (!b.foto_entrega) throw val_('Falta la foto del cliente con el vale');
+  const subidas = [];
+  const base = p.fecha + '_' + String(p.hora).replace(':', '') + '_' + p.impulsadora + '_completado';
+  const fotoEnt = foto_(b.foto_entrega, base + '_entrega', p.fecha, subidas);
+  const firma = b.firma ? foto_(b.firma, base + '_firma', p.fecha, subidas) : '';
+  return conLock_(function () {
+    const sh = hoja_('Pedidos'), cols = ESQUEMA.Pedidos;
+    const ids = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getDisplayValues();
+    let fila = -1;
+    for (let i = 0; i < ids.length; i++) if (ids[i][0] === String(b.id)) { fila = i + 2; break; }
+    if (fila < 0) { borrar_(subidas); throw val_('No se encontró el pedido'); }
+    const col = function (k) { return cols.indexOf(k) + 1; };
+    if (sh.getRange(fila, col('es_canje')).getDisplayValues()[0][0] === 'SÍ') { borrar_(subidas); throw val_('Este registro ya es un canje'); }
+    if (valeUsado_(codigo)) { borrar_(subidas); throw val_('El vale ' + codigo + ' ya se registró'); }
+    const previo = leer_('Pedidos').find(function (x) { return x.dni === dni && x.fecha === p.fecha && x.es_canje === 'SÍ' && x.id !== p.id; });
+    if (previo) { borrar_(subidas); throw val_('Este DNI ya recibió un vale ese día (' + previo.mercado + ', ' + previo.hora + ')'); }
+    const alertas = [p.alertas, firma ? '' : 'Sin firma', 'Canje completado después'].filter(String).join(', ');
+    const obs = limpio_(p.observaciones);
+    const set = {
+      es_canje: 'SÍ', vales: 1, codigos_vale: codigo, foto_entrega: fotoEnt, firma: firma || p.firma || '',
+      dni: dni, sacos_requeridos: req, compra_lima: 'SÍ', cumple_mecanica: p.foto_comprobante ? 'SÍ' : 'REVISAR',
+      alertas: alertas, validacion: 'Pendiente', validado_por: '', validado_en: '',
+      observaciones: (obs ? obs + ' | ' : '') + 'Canje completado por ' + u.nombre + ' el ' + ahora_() + ' (regla vigente: ' + req + ' sacos)' + (limpio_(b.nota) ? ': ' + limpio_(b.nota) : ''),
+    };
+    Object.keys(set).forEach(function (k) { sh.getRange(fila, col(k)).setValue(set[k]); });
+    agregar_('Vales', { codigo: codigo, pedido_id: p.id, fecha: p.fecha, impulsadora: p.impulsadora, mercado: p.mercado });
+    return { ok: true, pedido: Object.assign({}, p, set) };
   });
 }
 

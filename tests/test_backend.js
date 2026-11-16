@@ -161,6 +161,20 @@ ok('stock: quiebre se guarda con alerta y motivos', r.ok && r.alerta && s2.rc15_
 ok('stock: menos de 3 sacos es bajo stock', /motivo/.test(post({ ...K('fiori'), tipo: 'stock', id: 's3', turno: 'Cierre', skus: { ...skOk, rc22: { estado: 'Con stock', exhibicion: 2, transito: 'NO' } }, foto: FOTO }).error));
 ok('stock: supervisor elige mercado', post({ ...S, tipo: 'stock', id: 's4', turno: 'Apertura', mercado: 'Parada', skus: skOk, foto: FOTO }).ok && sh('Stock').find(x => x.id === 's4').mercado === 'Parada');
 ok('stock: id repetido no duplica', post({ ...K('fiori'), tipo: 'stock', id: 's1', turno: 'Apertura', skus: skOk, foto: FOTO }).duplicado && sh('Stock').filter(x => x.id === 's1').length === 1);
+// ---- completar canje (pedido guardado sin vale con la regla anterior) ----
+const filaVieja = (id, dni) => sheets.Pedidos.rows[0].map(k => ({ id, registrado: '2026-11-09 16:21:34', fecha: '2026-11-09', hora: '16:21', impulsadora: 'Impulsadora 2', mercado: 'Unicachi Norte Mayorista', cliente: 'Alfredo', n_comprobante: 'X' + id, sacos_ricocan: 4, sacos_ricocat: 6, sacos_total: 10, es_canje: 'NO', vales: 0, foto_comprobante: 'https://drive/x', dni, sacos_requeridos: 15, cumple_mecanica: 'N/A' })[k] ?? '');
+sheets.Pedidos.rows.push(filaVieja('old1', '6844459'), filaVieja('old2', '72915844'));
+sheets.Talonario.rows.push(['4000001', '', ''], ['4000002', '', ''], ['4000003', '', '']);
+ok('completar: impulsadora no puede', post({ ...F, tipo: 'completar_canje', id: 'old1', codigo: '4000001', foto_entrega: img, dni: '06844459' }).code === 'val');
+ok('completar: DNI de 7 dígitos se rechaza', /8 dígitos/.test(post({ ...S, tipo: 'completar_canje', id: 'old1', codigo: '4000001', foto_entrega: img }).error));
+ok('completar: pide foto', /foto/.test(post({ ...S, tipo: 'completar_canje', id: 'old1', codigo: '4000001', dni: '06844459' }).error));
+ok('completar: vale ya usado', /ya se registró/.test(post({ ...S, tipo: 'completar_canje', id: 'old1', codigo: '3000002', foto_entrega: img, dni: '06844459' }).error));
+r = post({ ...S, tipo: 'completar_canje', id: 'old1', codigo: '400 0001', foto_entrega: img, dni: '06844459' });
+const o1 = sh('Pedidos').find(p => p.id === 'old1');
+ok('completar: queda canje pendiente con vale, DNI y regla vigente', r.ok && o1.es_canje === 'SÍ' && o1.vales == 1 && o1.codigos_vale === '4000001' && o1.dni === '06844459' && o1.sacos_requeridos == 10 && o1.validacion === 'Pendiente' && o1.foto_entrega && /Sin firma/.test(o1.alertas) && /completado por/.test(o1.observaciones) && sheets.Vales.rows.some(v => v[0] === '4000001' && v[2] === '2026-11-09'), JSON.stringify(o1).slice(0, 400));
+ok('completar: no se repite', /ya es un canje/.test(post({ ...S, tipo: 'completar_canje', id: 'old1', codigo: '4000002', foto_entrega: img }).error));
+ok('completar: con firma no marca alerta', post({ ...S, tipo: 'completar_canje', id: 'old2', codigo: '4000002', foto_entrega: img, firma: img }).ok && !/Sin firma/.test(sh('Pedidos').find(p => p.id === 'old2').alertas));
+ok('completar: pedido con menos sacos que la regla', /se piden/.test(post({ ...S, tipo: 'completar_canje', id: 'p1', codigo: '4000003', foto_entrega: img }).error));
 // ---- dashboards cliente / interno y validación ----
 post({ ...F, tipo: 'incidencia', id: 'i1', tipo_incidencia: 'Otro', detalle: 'algo pasó' });
 const dc = get({ action: 'data', k: props.DASH_TOKEN });
