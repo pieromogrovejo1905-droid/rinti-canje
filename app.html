@@ -191,7 +191,7 @@
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
-    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión <span id="appVer">14</span></p>
+    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión <span id="appVer">15</span></p>
   </section>
 
   <!-- HOME -->
@@ -802,10 +802,13 @@ $('#goPedido').onclick = () => {
 };
 // En los mercados de C.GALERIA_COMPROBANTE la boleta se puede tomar con la cámara o elegir de la galería (ventas por reparto).
 function galeriaComprobante() {
-  const lab = $('#vPedido .foto[data-key="foto_comprobante"]'), inp = $('input', lab);
   const gal = (C.GALERIA_COMPROBANTE || []).includes(mercadoHoy());
-  if (gal) inp.removeAttribute('capture'); else inp.setAttribute('capture', 'environment');
-  $('.t', lab).innerHTML = (gal ? 'Tomar foto o elegir de la galería' : 'Tomar foto de la boleta') + `<small>${gal ? 'Para ventas por reparto puedes subir la foto que te enviaron' : 'Que se lean los sacos, la fecha y el total'}</small>`;
+  [['foto_comprobante', 'Tomar foto de la boleta', 'Que se lean los sacos, la fecha y el total'],
+   ['foto_entrega', 'Tomar foto del cliente', 'El cliente con el vale en la mano']].forEach(([k, t, sub]) => {
+    const lab = $(`#vPedido .foto[data-key="${k}"]`), inp = $('input', lab);
+    if (gal) inp.removeAttribute('capture'); else inp.setAttribute('capture', 'environment');
+    $('.t', lab).innerHTML = (gal ? 'Tomar foto o elegir de la galería' : t) + `<small>${gal ? 'Para ventas por reparto puedes subir la foto que te enviaron' : sub}</small>`;
+  });
 }
 $('#pEnviar').onclick = async () => {
   const v = $('#vPedido');
@@ -1056,7 +1059,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
    version.json dice la última versión publicada. Si es mayor que la de este teléfono, la app se
    recarga sola en cuanto la promotora está en el inicio (nunca a mitad de un formulario).
    Los registros sin enviar están en IndexedDB y no se pierden al recargar. */
-const APP_VERSION = 14;
+const APP_VERSION = 15;
 var hayVersionNueva = false; // var: show() la consulta antes de esta línea
 async function revisarVersion() {
   if (hayVersionNueva) return recargarSiSePuede();

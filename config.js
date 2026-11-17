@@ -68,7 +68,7 @@ window.RINTI = {
     'Falta de liquidez o espacio en puesto',
   ],
 
-  // Mercados donde la foto del comprobante también se puede subir desde la galería (ventas por reparto).
+  // Mercados donde la foto del comprobante y la del cliente con el vale también se pueden subir desde la galería (ventas por reparto).
   GALERIA_COMPROBANTE: ['Huamantanga'],
 
   TIPOS_INCIDENCIA: [
