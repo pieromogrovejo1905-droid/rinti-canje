@@ -191,7 +191,7 @@
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
-    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión 12</p>
+    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión 13</p>
   </section>
 
   <!-- HOME -->
@@ -797,8 +797,15 @@ $('#goPedido').onclick = () => {
   estadoDni('', ''); dniUsado = false; estadoVale('', ''); valeMalo = '';
   SACOS_IDS.forEach(id => $('#' + id).value = 0); $('#pCons').checked = false; $('#pLima').checked = false; $('#pConsWrap').hidden = true;
   $('#pPuestoSel').innerHTML = '<option value="">Elige el puesto</option>' + C.PUESTOS_PRODUCTORES.map(p => `<option>${esc(p)}</option>`).join('');
-  resetFotos(v); showErr(v, ''); valesPrev = -1; onMercadoPedido(); calcPedido(); show('vPedido');
+  resetFotos(v); showErr(v, ''); valesPrev = -1; onMercadoPedido(); calcPedido(); galeriaComprobante(); show('vPedido');
 };
+// En los mercados de C.GALERIA_COMPROBANTE la boleta se puede tomar con la cámara o elegir de la galería (ventas por reparto).
+function galeriaComprobante() {
+  const lab = $('#vPedido .foto[data-key="foto_comprobante"]'), inp = $('input', lab);
+  const gal = (C.GALERIA_COMPROBANTE || []).includes(mercadoHoy());
+  if (gal) inp.removeAttribute('capture'); else inp.setAttribute('capture', 'environment');
+  $('.t', lab).innerHTML = (gal ? 'Tomar foto o elegir de la galería' : 'Tomar foto de la boleta') + `<small>${gal ? 'Para ventas por reparto puedes subir la foto que te enviaron' : 'Que se lean los sacos, la fecha y el total'}</small>`;
+}
 $('#pEnviar').onclick = async () => {
   const v = $('#vPedido');
   const { rc, rc15, rt, rt9, tot } = sacosForm(), req = sacosReq(), vales = req && tot >= req ? 1 : 0;

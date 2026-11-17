@@ -49,6 +49,8 @@ window.RINTI = {
     'Lopes Lopes Merci · Pje. B, Pto. 45-46',
     'Inversiones Juanito · Pje. Productores, Pto. 61',
     'Criadores Trading · Pje. San Francisco de Asís, Pto. 21-23',
+    'Favel · Pje. Sr. de los Milagros, Pto. 103',
+    'Favel · Pje. D, Pto. 53',
   ],
 
   // Relevo de stock (promotores): presentaciones, en el orden del formulario.
@@ -65,6 +67,9 @@ window.RINTI = {
     'Comerciante priorizó compra de otra marca (Thor / Mimaskot / Cat Chow)',
     'Falta de liquidez o espacio en puesto',
   ],
+
+  // Mercados donde la foto del comprobante también se puede subir desde la galería (ventas por reparto).
+  GALERIA_COMPROBANTE: ['Huamantanga'],
 
   TIPOS_INCIDENCIA: [
     'Quiebre de stock Ricocan / Ricocat',
