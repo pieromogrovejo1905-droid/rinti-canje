@@ -191,7 +191,7 @@
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
-    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión 13</p>
+    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión <span id="appVer">14</span></p>
   </section>
 
   <!-- HOME -->
@@ -625,6 +625,7 @@ function show(id) {
   $('#btnSalir').hidden = id === 'vLogin';
   window.scrollTo(0, 0);
   if (id !== 'vHome' && id !== 'vLogin' && id !== 'vCola') { gps = null; gpsErr = false; pintarGPS(); pedirGPS(); }
+  else if (hayVersionNueva) setTimeout(recargarSiSePuede, 1500); // al volver al inicio, aplica la versión nueva
 }
 $$('[data-back]').forEach(b => b.onclick = () => { show('vHome'); pintarHome(); });
 window.addEventListener('popstate', () => {});
@@ -1050,6 +1051,33 @@ $('#pnRefrescar').onclick = cargarPanel;
 /* ---------- inicio ---------- */
 if (DEMO) { const b = $('#banner'); b.hidden = false; b.textContent = 'Modo práctica: no se guarda nada.'; }
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+
+/* ---------- actualización automática ----------
+   version.json dice la última versión publicada. Si es mayor que la de este teléfono, la app se
+   recarga sola en cuanto la promotora está en el inicio (nunca a mitad de un formulario).
+   Los registros sin enviar están en IndexedDB y no se pierden al recargar. */
+const APP_VERSION = 14;
+var hayVersionNueva = false; // var: show() la consulta antes de esta línea
+async function revisarVersion() {
+  if (hayVersionNueva) return recargarSiSePuede();
+  try {
+    const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const v = Number((await r.json()).version) || 0;
+    // Solo un intento de recarga por versión: si tras recargar sigue vieja (caché), no entra en bucle.
+    if (v > APP_VERSION && store.get('recargoA', 0) < v) { hayVersionNueva = v; recargarSiSePuede(); }
+  } catch { /* sin señal: se revisa luego */ }
+}
+function recargarSiSePuede() {
+  const enInicio = !$('#vHome').hidden || !$('#vLogin').hidden;
+  if (!enInicio || !$('#overlay').hidden) return;
+  store.set('recargoA', hayVersionNueva);
+  toast('Actualizando la app…');
+  setTimeout(() => location.reload(), 800);
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') revisarVersion(); });
+setInterval(() => { if (document.visibilityState === 'visible') revisarVersion(); }, 5 * 60000);
+setTimeout(revisarVersion, 3000);
 cargarEquipo();
 store.del('pin');
 if (S.user && S.cred) entrar(); else show('vLogin');
