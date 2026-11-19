@@ -543,6 +543,43 @@ function semaforo(v, meta) {
   const p = pct(v, meta);
   return p >= 100 ? `<span class="st ok">✔ ${p}%</span>` : p >= 60 ? `<span class="st warn">● ${p}%</span>` : `<span class="st err">▼ ${p}%</span>`;
 }
+// Horas efectivas: por cada día, de la primera Entrada a la última Salida.
+// Día sin Salida: si es hoy cuenta hasta ahora (en curso); si es un día pasado no suma horas.
+const HORAS_SEMANA = 48, DIAS_SEMANA = 6, HORAS_DIA = HORAS_SEMANA / DIAS_SEMANA;
+const aMin = t => { const [h, m] = String(t || '').split(':').map(Number); return h * 60 + (m || 0); };
+function horasDe(A, nombre) {
+  const porDia = {};
+  A.filter(x => x.impulsadora === nombre).forEach(x => {
+    const d = porDia[x.fecha] || (porDia[x.fecha] = { ent: null, sal: null });
+    const m = aMin(x.hora); if (isNaN(m)) return;
+    if (x.marca === 'Entrada' && (d.ent === null || m < d.ent)) d.ent = m;
+    if (x.marca === 'Salida' && (d.sal === null || m > d.sal)) d.sal = m;
+  });
+  const h = hoy(), ahora = aMin(new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' }));
+  let min = 0, sinSalida = 0, enCurso = false, dias = 0;
+  for (const f in porDia) {
+    const d = porDia[f]; if (d.ent === null) continue;
+    dias++;
+    if (d.sal !== null && d.sal > d.ent) min += d.sal - d.ent;
+    else if (f === h) { min += Math.max(0, ahora - d.ent); enCurso = true; }
+    else sinSalida++;
+  }
+  return { h: min / 60, sinSalida, enCurso, dias };
+}
+const fmtH = n => fmtProm(n) + ' h';
+function semHoras(v, esp) {
+  const p = pct(v, esp);
+  return p >= 95 ? `<span class="st ok">✔ ${p}%</span>` : p >= 85 ? `<span class="st warn">● ${p}%</span>` : `<span class="st err">▼ ${p}%</span>`;
+}
+function celdasHoras(hr, esp) {
+  const nota = [hr.enCurso ? 'en curso' : '', hr.sinSalida ? `${hr.sinSalida} día${hr.sinSalida > 1 ? 's' : ''} sin salida` : ''].filter(Boolean).join(' · ');
+  return `<td class="n"><b>${fmtH(hr.h)}</b>${nota ? `<div style="color:var(--muted);font-size:11px">${nota}</div>` : ''}</td><td class="n">${fmtH(esp)}</td><td class="n">${semHoras(hr.h, esp)}</td>`;
+}
+const thHoras = '<th class="n" title="Suma de las horas entre entrada y salida de cada día">Horas efectivas</th><th class="n" title="48 horas hombre semanales = 8 h por día de operación (lunes a sábado)">Horas esperadas</th><th class="n">Cumpl. horas</th>';
+function pieHoras(eq, A, esp, antes, despues) {
+  const tot = eq.reduce((s, e) => s + horasDe(A, e.nombre).h, 0), te = esp * eq.length;
+  return eq.length > 1 ? `<tfoot><tr><td colspan="${antes}"><b>Total horas hombre</b> (${eq.length} impulsadoras)</td>${despues || ''}<td class="n"><b>${fmtH(tot)}</b></td><td class="n">${fmtH(te)}</td><td class="n">${semHoras(tot, te)}</td></tr></tfoot>` : '';
+}
 function tablaEquipo(P, A, dias) {
   const [a, b] = rango(), unDia = a === b, h = hoy();
   const eq = (D.equipo || []).filter(e => e.rol === 'impulsadora' && (!F.mercado || e.mercado === F.mercado));
@@ -553,12 +590,14 @@ function tablaEquipo(P, A, dias) {
   if (!INTERNO) {
     const diasDe = e => new Set(A.filter(x => x.marca === 'Entrada' && deE(x, e)).map(x => x.fecha)).size;
     const act = eq.filter(e => diasDe(e) > 0).length;
-    $('#subEquipo').textContent = unDia ? `${act} de ${eq.length} impulsadoras activas ${cuando}` : `Días trabajados de cada impulsadora ${cuando} (${dias.length} días de operación)`;
-    $('#tEquipo').innerHTML = `<thead><tr><th>Impulsadora</th><th>Mercado</th><th>${unDia ? 'Estado' : 'Días activa'}</th></tr></thead><tbody>${eq.map(e => `<tr><td><b>${esc(e.nombre)}</b></td><td>${esc(e.mercado)}</td>
-      <td>${unDia ? (diasDe(e) ? '<span class="st ok">● Activa</span>' : '<span class="st na">○ Inactiva</span>') : `${diasDe(e)} / ${dias.length}`}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">Sin impulsadoras registradas</td></tr>'}</tbody>`;
+    const espC = HORAS_DIA * dias.length;
+    $('#subEquipo').textContent = (unDia ? `${act} de ${eq.length} impulsadoras activas ${cuando}` : `Días trabajados de cada impulsadora ${cuando} (${dias.length} días de operación)`) + ` · horas hombre sobre ${HORAS_SEMANA} h semanales (${HORAS_DIA} h por día)`;
+    $('#tEquipo').innerHTML = `<thead><tr><th>Impulsadora</th><th>Mercado</th><th>${unDia ? 'Estado' : 'Días activa'}</th>${thHoras}</tr></thead><tbody>${eq.map(e => `<tr><td><b>${esc(e.nombre)}</b></td><td>${esc(e.mercado)}</td>
+      <td>${unDia ? (diasDe(e) ? '<span class="st ok">● Activa</span>' : '<span class="st na">○ Inactiva</span>') : `${diasDe(e)} / ${dias.length}`}</td>${celdasHoras(horasDe(A, e.nombre), espC)}</tr>`).join('') || '<tr><td colspan="6" class="empty">Sin impulsadoras registradas</td></tr>'}</tbody>${pieHoras(eq, A, espC, 3)}`;
     return;
   }
-  $('#subEquipo').textContent = unDia ? `Asistencia y avance de cada impulsadora contra la meta del día (${cuando})` : `Asistencia y avance de cada impulsadora ${cuando} · meta = ${D.meta} por día × ${dias.length} días de operación`;
+  const esp = HORAS_DIA * dias.length;
+  $('#subEquipo').textContent = (unDia ? `Asistencia y avance de cada impulsadora contra la meta del día (${cuando})` : `Asistencia y avance de cada impulsadora ${cuando} · meta = ${D.meta} por día × ${dias.length} días de operación`) + ` · horas hombre sobre ${HORAS_SEMANA} h semanales (${HORAS_DIA} h por día)`;
   if (unDia) {
     const rows = eq.map(e => {
       const ent = A.find(x => x.impulsadora === e.nombre && x.marca === 'Entrada');
@@ -567,10 +606,10 @@ function tablaEquipo(P, A, dias) {
       return `<tr><td><b>${esc(e.nombre)}</b></td><td>${esc(ent ? ent.mercado : e.mercado)}</td>
         <td>${ent ? `<span class="st ${tarde(ent.hora) ? 'warn' : 'ok'}">${tarde(ent.hora) ? '● Tarde' : '✔'} ${esc(ent.hora)}</span>` : '<span class="st err">✕ Sin marcar</span>'}</td>
         <td>${sal ? esc(sal.hora) : '<span style="color:var(--muted)">—</span>'}</td>
-        <td class="n">${mis.length}</td><td class="n"><b>${cj}</b> / ${D.meta}</td><td class="n">${semaforo(cj, D.meta)}</td></tr>`;
+        <td class="n">${mis.length}</td><td class="n"><b>${cj}</b> / ${D.meta}</td><td class="n">${semaforo(cj, D.meta)}</td>${celdasHoras(horasDe(A, e.nombre), esp)}</tr>`;
     });
-    $('#tEquipo').innerHTML = `<thead><tr><th>Impulsadora</th><th>Mercado</th><th>Entrada</th><th>Salida</th><th class="n">Pedidos</th><th class="n">Canjes</th><th class="n">Avance</th></tr></thead>
-      <tbody>${rows.join('') || '<tr><td colspan="7" class="empty">Sin impulsadoras registradas</td></tr>'}</tbody>`;
+    $('#tEquipo').innerHTML = `<thead><tr><th>Impulsadora</th><th>Mercado</th><th>Entrada</th><th>Salida</th><th class="n">Pedidos</th><th class="n">Canjes</th><th class="n">Avance</th>${thHoras}</tr></thead>
+      <tbody>${rows.join('') || '<tr><td colspan="10" class="empty">Sin impulsadoras registradas</td></tr>'}</tbody>${pieHoras(eq, A, esp, 7)}`;
     return;
   }
   const rows = eq.map(e => {
@@ -578,10 +617,10 @@ function tablaEquipo(P, A, dias) {
     const dTrab = new Set(ents.map(x => x.fecha)).size, tard = ents.filter(x => tarde(x.hora)).length;
     const mis = P.filter(p => p.impulsadora === e.nombre), cj = mis.filter(p => p._canje).length, meta = D.meta * dias.length;
     return `<tr><td><b>${esc(e.nombre)}</b></td><td>${esc(e.mercado)}</td><td class="n">${dTrab} / ${dias.length}</td>
-      <td class="n">${tard || '<span style="color:var(--muted)">0</span>'}</td><td class="n">${mis.length}</td><td class="n"><b>${cj}</b> / ${meta}</td><td class="n">${semaforo(cj, meta)}</td></tr>`;
+      <td class="n">${tard || '<span style="color:var(--muted)">0</span>'}</td><td class="n">${mis.length}</td><td class="n"><b>${cj}</b> / ${meta}</td><td class="n">${semaforo(cj, meta)}</td>${celdasHoras(horasDe(A, e.nombre), esp)}</tr>`;
   });
-  $('#tEquipo').innerHTML = `<thead><tr><th>Impulsadora</th><th>Mercado</th><th class="n">Días trabajados</th><th class="n">Tardanzas</th><th class="n">Pedidos</th><th class="n">Canjes</th><th class="n">Avance</th></tr></thead>
-    <tbody>${rows.join('') || '<tr><td colspan="7" class="empty">Sin impulsadoras registradas</td></tr>'}</tbody>`;
+  $('#tEquipo').innerHTML = `<thead><tr><th>Impulsadora</th><th>Mercado</th><th class="n">Días trabajados</th><th class="n">Tardanzas</th><th class="n">Pedidos</th><th class="n">Canjes</th><th class="n">Avance</th>${thHoras}</tr></thead>
+    <tbody>${rows.join('') || '<tr><td colspan="10" class="empty">Sin impulsadoras registradas</td></tr>'}</tbody>${pieHoras(eq, A, esp, 7)}`;
 }
 function tablaMercado(P, A, I, dias) {
   const mercados = F.mercado ? [F.mercado] : D.mercados;
