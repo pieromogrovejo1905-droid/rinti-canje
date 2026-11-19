@@ -15,7 +15,7 @@ window.RINTI = {
     'Unicachi Norte Mayorista': 10,
     'Unicachi Norte Minorista': 10,
     'Huamantanga': 10,
-    'Ciudad de Dios': 10,
+    'Ciudad de Dios': 8,
     'Caquetá': 10,
   },
   KG: { ricocan: 22, ricocat: 15, ricocan15: 15, ricocat9: 9 },
