@@ -14,7 +14,8 @@ Mecánica: el cliente compra **N sacos (Ricocan 22 o 15 kg y/o Ricocat 15 o 9 kg
 |---|---|
 | Mercado Productores | 15 |
 | Fiori | 15 |
-| Unicachi Sur, Parada, Unicachi Norte Mayorista, Unicachi Norte Minorista, Huamantanga, Ciudad de Dios, Caquetá | 10 |
+| Unicachi Sur | 8 |
+| Parada, Unicachi Norte Mayorista, Unicachi Norte Minorista, Huamantanga, Ciudad de Dios, Caquetá | 10 |
 
 Las reglas están en `SACOS_POR_MERCADO` (apps-script/Code.gs, que manda) y en `config.js` (copia para usar sin señal).
 

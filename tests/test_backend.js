@@ -111,7 +111,7 @@ const d = get({ action: 'data', k: props.DASH_TOKEN });
 const p2 = d.pedidos.find(p => p.id === 'p2');
 ok('dashboard: DNI enmascarado y sin celular', p2.dni === '•••••678' && !d.pedidos.some(p => 'celular' in p), p2.dni);
 ok('dashboard: sacos requeridos guardados', p2.sacos_requeridos === '15' && p2.es_canje === 'SÍ');
-ok('dashboard: reglas en la respuesta', d.sacos_por_mercado['Mercado Productores'] === 15);
+ok('dashboard: reglas en la respuesta', d.sacos_por_mercado['Mercado Productores'] === 15 && d.sacos_por_mercado['Unicachi Sur'] === 8);
 ok('dashboard: sin token no hay datos', get({ action: 'data', k: 'x' }).code === 'auth');
 // ---- coordinador, panel y regla del vale ----
 sh = n => sheets[n].rows.slice(1).map(r => Object.fromEntries(sheets[n].rows[0].map((h, i) => [h, r[i]])));
