@@ -26,7 +26,7 @@ const SACOS_POR_MERCADO = {
   'Unicachi Norte Mayorista': 10,
   'Unicachi Norte Minorista': 10,
   'Huamantanga': 10,
-  'Ciudad de Dios': 10,
+  'Ciudad de Dios': 8,
   'Caquetá': 10,
 };
 
