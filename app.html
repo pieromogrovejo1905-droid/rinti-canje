@@ -191,7 +191,7 @@
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
-    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión <span id="appVer">18</span></p>
+    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión <span id="appVer">19</span></p>
   </section>
 
   <!-- HOME -->
@@ -1059,7 +1059,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
    version.json dice la última versión publicada. Si es mayor que la de este teléfono, la app se
    recarga sola en cuanto la promotora está en el inicio (nunca a mitad de un formulario).
    Los registros sin enviar están en IndexedDB y no se pierden al recargar. */
-const APP_VERSION = 18;
+const APP_VERSION = 19;
 var hayVersionNueva = false; // var: show() la consulta antes de esta línea
 async function revisarVersion() {
   if (hayVersionNueva) return recargarSiSePuede();
