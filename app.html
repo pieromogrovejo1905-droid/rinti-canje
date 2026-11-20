@@ -191,7 +191,7 @@
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
-    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión <span id="appVer">20</span></p>
+    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión <span id="appVer">21</span></p>
   </section>
 
   <!-- HOME -->
@@ -210,6 +210,7 @@
       <div class="stats"><span>Pedidos <b id="hPedidos">0</b></span><span>Vales <b id="hVales">0</b></span><span>Sacos <b id="hSacos">0</b></span></div>
     </div>
     <button class="btn" id="goPanel" hidden><span class="ic">👥</span>Panel del equipo</button>
+    <button class="btn sec" id="goExcel" hidden><span class="ic">📥</span>Descargar Excel de canjes</button>
     <button class="btn" id="goAsis"><span class="ic">🕘</span><span id="goAsisTxt">Marcar entrada</span></button>
     <button class="btn" id="goPedido"><span class="ic">🧾</span>Registrar pedido / canje</button>
     <button class="btn" id="goStock"><span class="ic">📋</span>Relevo de stock</button>
@@ -410,6 +411,7 @@
 <div id="toast"></div>
 
 <script src="config.js"></script>
+<script src="exportar.js"></script>
 <script>
 (() => {
 'use strict';
@@ -421,6 +423,8 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
 /* ---------- utilidades ---------- */
 const hoy = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+// Meta del día: la de Config, salvo que un cambio de meta (C.META_CAMBIOS) ya esté vigente.
+const metaHoy = () => { let m = S.meta; (C.META_CAMBIOS || []).forEach(c => { if (hoy() >= c.desde) m = c.meta; }); return m; };
 const horaLima = () => new Date().toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit', hour12: false });
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 const store = {
@@ -682,6 +686,7 @@ function entrar() {
   $('#hMercado').disabled = !esJefe();
   $('#goCierre').hidden = !esJefe();
   $('#goPanel').hidden = !esJefe();
+  $('#goExcel').hidden = !esJefe();
   show('vHome'); pintarHome(); refrescarCola(); procesarCola();
 }
 $('#hMercado').onchange = e => { store.set(mercKey(), e.target.value); pintarHome(); };
@@ -690,8 +695,8 @@ function pintarHome() {
   $('#hNombre').textContent = S.user.nombre;
   $('#hReq').textContent = sacosReq() || '–';
   const c = contador();
-  $('#hCanjes').innerHTML = `${c.canjes} <small>/ ${S.meta} canjes</small>`;
-  $('#hBar').style.width = Math.min(100, c.canjes / S.meta * 100) + '%';
+  $('#hCanjes').innerHTML = `${c.canjes} <small>/ ${metaHoy()} canjes</small>`;
+  $('#hBar').style.width = Math.min(100, c.canjes / metaHoy() * 100) + '%';
   $('#hPedidos').textContent = c.pedidos; $('#hVales').textContent = c.vales; $('#hSacos').textContent = c.sacos;
   const a = store.get(asisKey(), {});
   $('#hAsis').innerHTML = (a.Entrada ? `<span class="pill ok">✔ Entrada ${a.Entrada}</span> ` : '<span class="pill warn">Falta marcar entrada</span> ') + (a.Salida ? `<span class="pill ok">✔ Salida ${a.Salida}</span>` : '');
@@ -1000,7 +1005,7 @@ function panelDemo() {
       salida: '', canjes, pedidos: llego ? canjes + 2 : 0, sacos: llego ? canjes * (REGLAS[mer] || 5) + 3 : 0, ultima: llego && m >= 530 ? (i === 4 ? '10:05' : ahora) : '', foto_entrada: '',
       incidencias: i === 5 ? [{ hora: '11:20', tipo: 'Quiebre de stock Ricocan / Ricocat', detalle: 'Distribuidor sin Ricocan 22 kg' }] : [], requeridos: REGLAS[mer] };
   });
-  return { ok: true, fecha: hoy(), hora: ahora, meta: S.meta, hora_ingreso: '09:00', limite: '09:10', filas };
+  return { ok: true, fecha: hoy(), hora: ahora, meta: metaHoy(), hora_ingreso: '09:00', limite: '09:10', filas };
 }
 async function cargarPanel() {
   $('#pnAct').textContent = 'Actualizando…';
@@ -1047,6 +1052,20 @@ function pintarPanel(r) {
     </div>`;
   }).join('');
 }
+// Supervisores y coordinador: Excel de toda la campaña (resumen, por punto de venta, por cliente y detalle).
+$('#goExcel').onclick = async () => {
+  const b = $('#goExcel'); if (b.disabled) return;
+  if (!navigator.onLine) return toast('Necesitas conexión para descargar el Excel');
+  b.disabled = true; toast('Preparando el Excel…', 20000);
+  try {
+    const r = await enviar({ tipo: 'datos_interno', usuario: S.cred.usuario, clave: S.cred.clave });
+    if (!r.ok) return toast(r.error || 'No se pudo descargar', 5000);
+    if (!r.pedidos) return toast('En modo de prueba no hay datos para descargar', 4000);
+    const x = await window.RintiExcel.descargar(r.pedidos, { periodo: 'Toda la campaña', usuario: S.user.nombre });
+    toast(`Excel descargado: ${x.canjes} canjes y ${x.pedidos} pedidos`, 4000);
+  } catch (e) { toast((e && e.message) || 'Sin conexión. Intenta de nuevo.', 5000); }
+  finally { b.disabled = false; }
+};
 $('#goPanel').onclick = () => { $('#pnLista').innerHTML = ''; show('vPanel'); cargarPanel(); clearInterval(panelT);
   panelT = setInterval(() => { if (!$('#vPanel').hidden && document.visibilityState === 'visible') cargarPanel(); else if ($('#vPanel').hidden) clearInterval(panelT); }, 120000); };
 $('#pnRefrescar').onclick = cargarPanel;
@@ -1059,7 +1078,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
    version.json dice la última versión publicada. Si es mayor que la de este teléfono, la app se
    recarga sola en cuanto la promotora está en el inicio (nunca a mitad de un formulario).
    Los registros sin enviar están en IndexedDB y no se pierden al recargar. */
-const APP_VERSION = 20;
+const APP_VERSION = 21;
 var hayVersionNueva = false; // var: show() la consulta antes de esta línea
 async function revisarVersion() {
   if (hayVersionNueva) return recargarSiSePuede();
