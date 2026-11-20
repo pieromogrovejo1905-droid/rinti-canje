@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Kardex Interno Free · Vales de Pavo</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root{
+    color-scheme:light;
+    --accent:#3b47e0; --accent-soft:#eceefd; --navy:#0b1f4d; --green:#7db843;
+    --bg:#f3f4fb; --card:#fff; --ink:#0b1f4d; --ink2:#4a5275; --muted:#8a90ab; --line:#e1e4f3; --grid:#eceef8;
+    --ok:#1d7a46; --ok-soft:#e6f4ec; --warn:#9a5800; --warn-soft:#fdf1df; --err:#b42318; --err-soft:#fdecea;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:var(--accent);color:#fff;padding:18px 16px 22px;position:relative;overflow:hidden}
+  header::before{content:"";position:absolute;right:-60px;top:-90px;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.08)}
+  header::after{content:"";position:absolute;left:46%;bottom:-30px;width:56px;height:56px;border-radius:50%;background:var(--green)}
+  .hwrap{max-width:1280px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:14px 24px;justify-content:space-between;position:relative;z-index:1}
+  .brand{display:flex;align-items:center;gap:16px}
+  .brand .free{height:46px;display:block}
+  .brand .sep{width:1px;height:44px;background:rgba(255,255,255,.4)}
+  .brand .r{height:48px;width:48px;border-radius:12px;display:block}
+  .brand .kick{font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.85;font-weight:600}
+  .brand b{font-size:22px;display:block;font-weight:800;letter-spacing:-.01em}
+  .brand span.s{opacity:.9;font-size:13px}
+  .badge-int{display:inline-block;background:var(--green);color:var(--navy);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:3px 9px;margin-left:8px;vertical-align:3px}
+  .hright{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+  .marcas{display:flex;gap:8px}
+  .marcas img{height:30px;border-radius:7px;display:block}
+  .live{display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;background:rgba(255,255,255,.14);padding:5px 10px;border-radius:99px}
+  .live i{width:8px;height:8px;border-radius:50%;background:var(--green)}
+  .live.off i{background:var(--muted)}
+  .salir{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:99px;padding:5px 12px;font:inherit;font-size:13px;cursor:pointer}
+  @media (max-width:640px){.hright{align-items:flex-start}.brand .free{height:34px}.brand .r{height:36px;width:36px}.brand b{font-size:18px}}
+  .bar{max-width:1280px;margin:0 auto;padding:12px 16px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .sp{flex:1}
+  .btn{font:inherit;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer;color:var(--ink);display:inline-flex;align-items:center;gap:6px}
+  .btn:hover{border-color:#c5cae6}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff;font-weight:700}
+  .btn:disabled{opacity:.5;cursor:default}
+  main{max-width:1280px;margin:0 auto;padding:12px 16px 40px}
+  .alerts{display:grid;gap:8px;margin-bottom:12px}
+  .alert{border-radius:12px;padding:10px 14px;font-size:13.5px;display:flex;gap:10px;align-items:flex-start}
+  .alert.err{background:var(--err-soft);color:var(--err)} .alert.warn{background:var(--warn-soft);color:var(--warn)} .alert.ok{background:var(--ok-soft);color:var(--ok)}
+  .alert b{font-weight:700}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+  @media (max-width:1000px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+  .kpi .l{color:var(--ink2);font-size:13px}
+  .kpi .v{font-size:30px;font-weight:750;letter-spacing:-.02em;line-height:1.15;margin-top:4px;font-variant-numeric:tabular-nums}
+  .kpi .v small{font-size:15px;color:var(--muted);font-weight:600}
+  .kpi .s{color:var(--muted);font-size:12.5px;margin-top:4px}
+  .kpi.hero{background:var(--navy);border-color:var(--navy);color:#fff}
+  .kpi.hero .l,.kpi.hero .s{color:rgba(255,255,255,.75)}
+  .kpi.bad{border-color:var(--err);background:var(--err-soft)} .kpi.bad .v{color:var(--err)}
+  .pbar{height:7px;background:var(--grid);border-radius:99px;margin-top:8px;overflow:hidden}
+  .pbar i{display:block;height:100%;background:var(--accent);border-radius:99px}
+  .kpi.hero .pbar{background:rgba(255,255,255,.18)} .kpi.hero .pbar i{background:var(--green)}
+  @media (max-width:560px){.kpi .v{font-size:24px}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;min-width:0}
+  .card h2{font-size:15px;margin:0 0 2px}
+  .card .sub{color:var(--muted);font-size:12.5px;margin-bottom:12px}
+  .chead{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;justify-content:space-between}
+  .tw{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{text-align:left;font-weight:600;color:var(--ink2);font-size:12px;text-transform:uppercase;letter-spacing:.03em;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:bottom}
+  td{padding:8px 10px;border-bottom:1px solid var(--grid);vertical-align:middle}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  tfoot td{font-weight:700;border-top:2px solid var(--line);border-bottom:0;background:#f7f8fd}
+  td input{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);width:100%}
+  td input[data-k=supervisor]{min-width:150px}
+  td input.num{width:84px;text-align:right;font-variant-numeric:tabular-nums}
+  td input.chg{border-color:var(--accent);background:var(--accent-soft)}
+  td input.bad{border-color:var(--err);background:var(--err-soft)}
+  .neg{color:var(--err);font-weight:700}
+  .mini{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+  .mini .b{width:64px;height:6px;background:var(--grid);border-radius:99px;overflow:hidden}
+  .mini .b i{display:block;height:100%;background:var(--accent);border-radius:99px}
+  .st{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 8px;border-radius:99px;white-space:nowrap}
+  .st.ok{background:var(--ok-soft);color:var(--ok)} .st.warn{background:var(--warn-soft);color:var(--warn)} .st.err{background:var(--err-soft);color:var(--err)} .st.na{background:var(--grid);color:var(--ink2)}
+  .acts{display:flex;gap:6px;justify-content:flex-end}
+  .ib{font:inherit;font-size:12.5px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 9px;cursor:pointer;white-space:nowrap;color:var(--ink)}
+  .ib.pri{background:var(--accent-soft);border-color:#cdd2fa;color:var(--accent);font-weight:600}
+  .mname{font-weight:700}
+  .mname small{display:block;color:var(--muted);font-weight:400;font-size:11.5px}
+  .empty{color:var(--muted);padding:16px 0;text-align:center}
+  .modal{position:fixed;inset:0;background:rgba(11,31,77,.55);display:grid;place-items:center;z-index:20;padding:16px}
+  .mbox{background:#fff;border-radius:16px;max-width:880px;width:100%;max-height:92vh;overflow:auto;padding:20px}
+  .mbox.sm{max-width:560px}
+  .mhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}
+  .mhead h2{margin:0;font-size:18px}
+  .mhead .s{color:var(--muted);font-size:13px}
+  .f label{display:block;font-weight:600;font-size:13px;margin:12px 0 6px;color:var(--ink2)}
+  .f input,.f select,.f textarea{width:100%;font:inherit;font-size:16px;padding:10px 12px;border:1px solid #cfd3ea;border-radius:10px;background:#fff;color:var(--ink)}
+  .f textarea{min-height:64px;resize:vertical}
+  .f .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:520px){.f .row{grid-template-columns:1fr}}
+  .saldo{margin-top:10px;padding:10px 12px;border-radius:10px;background:#f7f8fd;border:1px solid var(--line);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 18px}
+  .saldo b{font-size:15px}
+  .saldo.bad{background:var(--err-soft);border-color:#f3c3be;color:var(--err)}
+  .fotobtns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .fbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1.5px dashed #b9bfe6;border-radius:12px;padding:14px 8px;cursor:pointer;background:#fafbff;text-align:center;font-weight:700;color:var(--accent)}
+  .fbtn small{font-weight:500;color:var(--muted);font-size:11.5px}
+  .fbtn .ic{font-size:22px}
+  .fbtn input{display:none}
+  .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:10px}
+  .thumbs div{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+  .thumbs img{display:block;width:100%;aspect-ratio:1;object-fit:cover}
+  .thumbs button{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(11,31,77,.75);color:#fff;cursor:pointer;font-size:13px;line-height:1}
+  .thumbs span{position:absolute;left:4px;bottom:4px;background:rgba(11,31,77,.75);color:#fff;font-size:10.5px;border-radius:6px;padding:1px 6px}
+  .ferr{background:var(--err-soft);color:var(--err);padding:10px 12px;border-radius:10px;margin-top:12px;font-size:13.5px}
+  .fsend{width:100%;margin-top:16px;border:0;border-radius:12px;background:var(--accent);color:#fff;font:inherit;font-weight:700;font-size:16px;padding:13px;cursor:pointer}
+  .fsend:disabled{opacity:.55;cursor:default}
+  .tabs{display:inline-flex;background:var(--grid);border-radius:10px;padding:3px;margin-bottom:12px}
+  .tabs button{border:0;background:none;font:inherit;padding:7px 14px;border-radius:7px;color:var(--ink2);cursor:pointer}
+  .tabs button.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(11,31,77,.12)}
+  .mk{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+  @media (max-width:560px){.mk{grid-template-columns:repeat(2,1fr)}}
+  .mk div{background:#f7f8fd;border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted)}
+  .mk b{display:block;font-size:20px;color:var(--ink)}
+  .mov-in{color:var(--ok);font-weight:700} .mov-out{color:var(--err);font-weight:700}
+  .gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .ph{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fafaf8;text-decoration:none;color:inherit;display:block}
+  .ph img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--grid)}
+  .ph div{padding:7px 9px;font-size:12px;color:var(--ink2)}
+  .ph b{color:var(--ink);display:block;font-size:12.5px}
+  .fotos-mini{display:flex;gap:4px}
+  .fotos-mini img{width:34px;height:34px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
+  .login{position:fixed;inset:0;z-index:30;background:var(--bg);display:grid;place-items:center;padding:16px;overflow:auto}
+  .lbox{width:100%;max-width:400px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 20px 50px rgba(11,31,77,.15)}
+  .ltop{background:var(--accent);color:#fff;padding:24px;position:relative;overflow:hidden}
+  .ltop::after{content:"";position:absolute;right:70px;bottom:-24px;width:50px;height:50px;border-radius:50%;background:var(--green)}
+  .ltop .logos{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .ltop .logos .free{height:40px} .ltop .logos .r{height:44px;width:44px;border-radius:11px} .ltop .logos .sep{width:1px;height:36px;background:rgba(255,255,255,.4)}
+  .ltop .kick{font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.85;font-weight:600}
+  .ltop h1{margin:2px 0 4px;font-size:24px;font-weight:800}
+  .ltop p{margin:0;opacity:.9;font-size:13.5px}
+  .lform{padding:20px 24px 24px}
+  .lform label{display:block;font-weight:600;font-size:13px;margin:12px 0 6px;color:var(--ink2)}
+  .lform input{width:100%;font:inherit;font-size:16px;padding:11px 12px;border:1px solid #cfd3ea;border-radius:10px}
+  .lform button{width:100%;margin-top:18px;border:0;border-radius:12px;background:var(--accent);color:#fff;font:inherit;font-weight:700;font-size:16px;padding:13px;cursor:pointer}
+  .lform button:disabled{opacity:.6}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:12px;z-index:40;font-size:14px;box-shadow:0 10px 30px rgba(11,31,77,.3);max-width:calc(100% - 32px)}
+  .demo-banner{background:var(--warn-soft);color:var(--warn);padding:8px 16px;text-align:center;font-size:13px}
+  .foot{max-width:1280px;margin:0 auto;padding:4px 16px 32px;display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12.5px}
+  .foot img{height:28px}
+  .print-only{display:none}
+  @media print{
+    body{background:#fff}
+    .bar,.noprint,.live,.acts,.salir{display:none!important}
+    .print-only{display:block}
+    header{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .card,.kpi{break-inside:avoid;border-color:#ccc}
+    td input{border:0;padding:0;background:none}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="hwrap">
+    <div class="brand"><img class="free" src="img/free-blanco.png" alt="Free Marketing"><span class="sep"></span><img class="r" src="img/rinti-r.png" alt="Rinti">
+      <div><div class="kick">Rinti × Free</div><b>Kardex Interno Free<span class="badge-int">Interno</span></b><span class="s">Control de Vales de Pavo (7 kg) | Campaña Rinti (Ricocan &amp; Ricocat)</span></div></div>
+    <div class="hright"><div class="marcas"><img src="img/ricocan.png" alt="Ricocan"><img src="img/ricocat.png" alt="Ricocat"></div>
+      <div style="display:flex;gap:8px;align-items:center"><div class="live off" id="live"><i></i><span id="liveTxt">Cargando…</span></div><button class="salir" id="btnSalir" hidden>Salir</button></div></div>
+  </div>
+</header>
+<div id="banner"></div>
+<div class="bar noprint">
+  <button class="btn pri" id="bEntrega">＋ Registrar entrega de vales</button>
+  <button class="btn" id="bEquitativa" title="Reparte el lote maestro en partes iguales entre los 9 mercados">⚖️ Distribución equitativa</button>
+  <button class="btn ok" id="bGuardar" disabled>Guardar cambios</button>
+  <button class="btn" id="bDescartar" hidden>Descartar</button>
+  <span class="sp"></span>
+  <button class="btn" id="bCsv">CSV</button>
+  <button class="btn" id="bXlsx">Excel</button>
+  <button class="btn" id="bPrint">Imprimir</button>
+  <button class="btn" id="bRecargar" title="Actualizar datos">↻</button>
+</div>
+
+<main>
+  <p class="print-only" id="printHdr"></p>
+  <section class="alerts" id="alerts"></section>
+  <section class="kpis" id="kpis"></section>
+
+  <section class="card">
+    <div class="chead"><div><h2>Kardex por mercado</h2>
+      <div class="sub">Entregado = vales que el supervisor llevó del almacén al mercado · Canjeado = vales entregados a clientes en la app · Saldo en campo = entregado − canjeado</div></div></div>
+    <div class="tw"><table id="tKardex"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="chead"><div><h2>Historial de entregas</h2><div class="sub">Todas las entregas de vales registradas por supervisores, de la más reciente a la más antigua</div></div>
+      <select id="fHist" class="btn"><option value="">Todos los mercados</option></select></div>
+    <div class="tw"><table id="tHist"></table></div>
+  </section>
+</main>
+<footer class="foot"><img src="img/free-azul.png" alt="Free Marketing"><span>Uso interno de Free Marketing · Campaña Rinti · Canje Ricocan &amp; Ricocat</span></footer>
+
+<datalist id="dlSup"></datalist>
+<div class="modal" id="modal" hidden><div class="mbox" id="mbox"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<div class="login" id="login" hidden>
+  <form class="lbox" id="loginForm" autocomplete="on">
+    <div class="ltop">
+      <div class="logos"><img class="free" src="img/free-blanco.png" alt="Free Marketing"><span class="sep"></span><img class="r" src="img/rinti-r.png" alt="Rinti"></div>
+      <div class="kick">Rinti × Free · Interno</div>
+      <h1>Kardex de Vales de Pavo</h1>
+      <p>Ingresa con tu usuario de supervisor o coordinador</p>
+    </div>
+    <div class="lform">
+      <label for="gUsuario">Usuario</label>
+      <input id="gUsuario" type="text" autocomplete="username" autocapitalize="none" spellcheck="false">
+      <label for="gClave">Contraseña</label>
+      <input id="gClave" type="password" autocomplete="current-password">
+      <div class="ferr" id="gErr" hidden></div>
+      <button type="submit" id="gBtn">Ingresar</button>
+      <a href="./" style="display:block;text-align:center;margin-top:14px;color:var(--muted);font-size:13px">← Volver al inicio</a>
+    </div>
+  </form>
+</div>
+
+<script src="config.js"></script>
+<script>
+(() => {
+'use strict';
+const C = window.RINTI || {};
+const qs = new URLSearchParams(location.search);
+const API = (C.API_URL || '').trim();
+const DEMO = !API || qs.get('demo') === '1';
+const CI_KEY = 'rinti:ci'; // mismo acceso que el dashboard interno
+const MAX_FOTOS = 8;
+let CI = (() => { try { return JSON.parse(localStorage.getItem(CI_KEY) || 'null'); } catch { return null; } })();
+const guardarCI = v => { try { v ? localStorage.setItem(CI_KEY, JSON.stringify(v)) : localStorage.removeItem(CI_KEY); } catch {} };
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = n => Math.round(n).toLocaleString('es-PE');
+const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+const hoy = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+const fCorta = f => { const [y, m, d] = String(f).split('-'); return d ? `${d}/${m}/${y.slice(2)}` : f; };
+const driveId = u => (String(u).match(/\/d\/([^/]+)/) || [])[1];
+const thumb = (u, w = 400) => !u ? '' : u.startsWith('data:') ? u : driveId(u) ? `https://drive.google.com/thumbnail?id=${driveId(u)}&sz=w${w}` : u;
+const fotosDe = e => String(e.fotos || '').split(/\s+/).filter(Boolean);
+const corto = m => m.replace(/^Mercado /, '');
+function toast(m, ms = 3200) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms); }
+
+/* ---------- API ---------- */
+async function api(b) {
+  if (DEMO) return demoApi(b);
+  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ usuario: CI && CI.usuario, clave: CI && CI.clave }, b)) });
+  return r.json();
+}
+
+/* ---------- estado ---------- */
+let D = null;          // respuesta del servidor
+let ED = {};           // ediciones sin guardar: { mercado: { supervisor, dotacion } }
+const dirty = () => Object.keys(ED).length > 0;
+const val = (m, k) => ED[m.mercado] && k in ED[m.mercado] ? ED[m.mercado][k] : m[k];
+
+function calc() {
+  const ent = {}, ult = {};
+  D.entregas.forEach(e => { ent[e.mercado] = (ent[e.mercado] || 0) + Number(e.cantidad || 0); ult[e.mercado] = e.fecha; });
+  const filas = D.mercados.map(m => {
+    const dot = Number(val(m, 'dotacion')) || 0, en = ent[m.mercado] || 0, cj = (D.canjes[m.mercado] || {}).total || 0;
+    return { m, mercado: m.mercado, supervisor: val(m, 'supervisor'), dot, ent: en, cj, campo: en - cj, porEntregar: dot - en, av: pct(cj, dot), ult: ult[m.mercado] || '' };
+  });
+  const t = filas.reduce((s, f) => { s.dot += f.dot; s.ent += f.ent; s.cj += f.cj; s.porEntregar += Math.max(0, f.porEntregar); return s; }, { dot: 0, ent: 0, cj: 0, porEntregar: 0 });
+  t.campo = t.ent - t.cj; t.almacen = D.lote - t.ent; t.sinAsignar = D.lote - t.dot;
+  return { filas, t };
+}
+
+/* ---------- pintar ---------- */
+function pintar() {
+  const { filas, t } = calc(), L = D.lote;
+  // Alertas automáticas
+  const al = [];
+  if (t.dot > L) al.push(['err', `<b>Dotación excede el stock maestro:</b> se asignaron ${fmt(t.dot)} vales y el lote es de ${fmt(L)} (exceso de ${fmt(t.dot - L)}).`]);
+  if (t.ent > L) al.push(['err', `<b>Entregas exceden el stock maestro:</b> ${fmt(t.ent)} vales entregados a mercados de un lote de ${fmt(L)}.`]);
+  if (t.cj > L) al.push(['err', `<b>Canjes exceden el stock maestro:</b> ${fmt(t.cj)} vales canjeados de un lote de ${fmt(L)}.`]);
+  const neg = filas.filter(f => f.campo < 0);
+  if (neg.length) al.push(['warn', `<b>Más canjes que vales entregados</b> en ${neg.map(f => `${esc(corto(f.mercado))} (${fmt(-f.campo)})`).join(', ')}. Registra las entregas de vales que falten para cuadrar el kardex.`]);
+  const sobre = filas.filter(f => f.dot && f.ent > f.dot);
+  if (sobre.length) al.push(['err', `<b>Entregado mayor a la dotación</b> en ${sobre.map(f => esc(corto(f.mercado))).join(', ')}.`]);
+  if (!t.dot) al.push(['warn', 'Aún no hay dotación asignada. Usa <b>Distribución equitativa</b> o escribe la dotación de cada mercado y guarda.']);
+  if (dirty()) al.push(['warn', 'Tienes cambios sin guardar en el kardex.']);
+  $('#alerts').innerHTML = al.map(([c, m]) => `<div class="alert ${c}">${c === 'err' ? '⚠️' : 'ℹ️'}<span>${m}</span></div>`).join('');
+
+  // KPIs
+  const kpi = (l, v, s, cls = '', bar) => `<div class="kpi ${cls}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div>${bar != null ? `<div class="pbar"><i style="width:${Math.min(100, Math.max(0, bar))}%"></i></div>` : ''}</div>`;
+  $('#kpis').innerHTML = [
+    kpi('Lote maestro', fmt(L), 'vales de pavo de 7 kg', 'hero'),
+    kpi('Asignado a los 9 mercados', `${fmt(t.dot)}`, t.dot > L ? `excede en ${fmt(t.dot - L)}` : `${fmt(t.sinAsignar)} sin asignar · ${pct(t.dot, L)}% del lote`, t.dot > L ? 'bad' : '', pct(t.dot, L)),
+    kpi('Entregado a mercados', fmt(t.ent), `${fmt(t.porEntregar)} vales por entregar de la dotación`, t.ent > L ? 'bad' : '', pct(t.ent, t.dot || L)),
+    kpi('Canjeado (entregado a clientes)', fmt(t.cj), 'canjes registrados por las impulsadoras', t.cj > L ? 'bad' : ''),
+    kpi('Saldo disponible en campo', fmt(t.campo), 'vales en los mercados sin canjear', t.campo < 0 ? 'bad' : ''),
+    kpi('Saldo en almacén central', fmt(t.almacen), 'lote maestro − entregado a mercados', t.almacen < 0 ? 'bad' : ''),
+    kpi('Avance global', `${pct(t.cj, L)}<small>%</small>`, `${fmt(t.cj)} de ${fmt(L)} vales canjeados`, '', pct(t.cj, L)),
+    kpi('Entregas registradas', fmt(D.entregas.length), D.entregas.length ? `última: ${fCorta(D.entregas[D.entregas.length - 1].fecha)} ${esc(D.entregas[D.entregas.length - 1].hora)}` : 'aún sin entregas'),
+  ].join('');
+
+  // Tabla kardex
+  const stAv = f => !f.dot ? '<span class="st na">Sin dotación</span>' : `<div class="mini"><span>${f.av}%</span><span class="b"><i style="width:${Math.min(100, f.av)}%"></i></span></div>`;
+  const chg = (m, k) => ED[m.mercado] && k in ED[m.mercado] ? ' chg' : '';
+  $('#tKardex').innerHTML = `<thead><tr><th>Mercado</th><th>Supervisor</th><th class="n">Dotación inicial</th><th class="n">Entregado al mercado</th><th class="n">Por entregar</th><th class="n">Canjeado</th><th class="n">Saldo en campo</th><th class="n">Avance</th><th class="noprint"></th></tr></thead>
+    <tbody>${filas.map(f => `<tr>
+      <td><div class="mname">${esc(corto(f.mercado))}<small>${f.ult ? 'última entrega ' + fCorta(f.ult) : 'sin entregas'}</small></div></td>
+      <td><input data-m="${esc(f.mercado)}" data-k="supervisor" class="${chg(f.m, 'supervisor')}" list="dlSup" value="${esc(f.supervisor)}" placeholder="Asignar…" aria-label="Supervisor de ${esc(f.mercado)}"></td>
+      <td class="n"><input data-m="${esc(f.mercado)}" data-k="dotacion" class="num${chg(f.m, 'dotacion')}${f.dot < f.ent ? ' bad' : ''}" type="number" min="0" step="1" inputmode="numeric" value="${f.dot}" aria-label="Dotación de ${esc(f.mercado)}"></td>
+      <td class="n"><b>${fmt(f.ent)}</b></td>
+      <td class="n">${f.porEntregar < 0 ? `<span class="neg">${fmt(f.porEntregar)}</span>` : fmt(f.porEntregar)}</td>
+      <td class="n">${fmt(f.cj)}</td>
+      <td class="n">${f.campo < 0 ? `<span class="neg" title="Más canjes que vales entregados">${fmt(f.campo)}</span>` : `<b>${fmt(f.campo)}</b>`}</td>
+      <td class="n">${stAv(f)}</td>
+      <td class="noprint"><div class="acts"><button class="ib pri" data-entrega="${esc(f.mercado)}">＋ Entrega</button><button class="ib" data-ver="${esc(f.mercado)}">Historial y fotos</button></div></td></tr>`).join('')}</tbody>
+    <tfoot><tr><td>Total (${filas.length} mercados)</td><td></td><td class="n${t.dot > L ? ' neg' : ''}">${fmt(t.dot)}</td><td class="n">${fmt(t.ent)}</td><td class="n">${fmt(t.porEntregar)}</td><td class="n">${fmt(t.cj)}</td><td class="n${t.campo < 0 ? ' neg' : ''}">${fmt(t.campo)}</td><td class="n">${pct(t.cj, t.dot)}%</td><td class="noprint"></td></tr></tfoot>`;
+
+  $('#bGuardar').disabled = !dirty(); $('#bDescartar').hidden = !dirty();
+  $('#dlSup').innerHTML = (D.supervisores || []).map(s => `<option value="${esc(s)}">`).join('');
+  const fh = $('#fHist'), cur = fh.value;
+  fh.innerHTML = '<option value="">Todos los mercados</option>' + D.mercados.map(m => `<option${m.mercado === cur ? ' selected' : ''}>${esc(m.mercado)}</option>`).join('');
+  pintarHist();
+  $('#printHdr').textContent = `Kardex de vales de pavo · generado ${new Date().toLocaleString('es-PE')} · ${D.usuario ? D.usuario.nombre : ''}`;
+}
+
+function pintarHist() {
+  const m = $('#fHist').value;
+  const rows = D.entregas.filter(e => !m || e.mercado === m).slice().reverse();
+  $('#tHist').innerHTML = `<thead><tr><th>Fecha</th><th>Mercado</th><th class="n">Vales</th><th>Recibe</th><th>Registró</th><th>Nota</th><th>Fotos</th></tr></thead>
+    <tbody>${rows.map(e => `<tr><td style="white-space:nowrap">${fCorta(e.fecha)} ${esc(e.hora)}</td><td>${esc(corto(e.mercado))}</td><td class="n"><b>${fmt(e.cantidad)}</b></td><td>${esc(e.recibe)}</td><td>${esc(e.supervisor)}</td><td>${esc(e.nota)}</td>
+      <td><div class="fotos-mini">${fotosDe(e).slice(0, 4).map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(thumb(u, 120))}" alt="Foto" loading="lazy"></a>`).join('')}${fotosDe(e).length > 4 ? `<span style="color:var(--muted);font-size:12px;align-self:center">+${fotosDe(e).length - 4}</span>` : ''}</div></td></tr>`).join('')
+      || '<tr><td colspan="7" class="empty">Sin entregas registradas</td></tr>'}</tbody>`;
+}
+
+/* ---------- edición en línea ---------- */
+$('#tKardex').addEventListener('input', ev => {
+  const i = ev.target.closest('input[data-m]'); if (!i) return;
+  const m = D.mercados.find(x => x.mercado === i.dataset.m), k = i.dataset.k;
+  const v = k === 'dotacion' ? (i.value === '' ? 0 : Math.max(0, Math.floor(Number(i.value)) || 0)) : i.value.trim();
+  ED[m.mercado] = ED[m.mercado] || {};
+  if (String(v) === String(m[k])) delete ED[m.mercado][k]; else ED[m.mercado][k] = v;
+  if (!Object.keys(ED[m.mercado]).length) delete ED[m.mercado];
+  clearTimeout(pintar.t); pintar.t = setTimeout(() => { const pos = [document.activeElement && document.activeElement.dataset.m, document.activeElement && document.activeElement.dataset.k]; pintar(); refocus(pos); }, k === 'dotacion' ? 350 : 600);
+});
+function refocus([m, k]) { if (!m) return; const el = [...document.querySelectorAll('#tKardex input[data-m]')].find(x => x.dataset.m === m && x.dataset.k === k); if (el) { el.focus(); const n = el.value.length; try { el.setSelectionRange(n, n); } catch {} } }
+$('#tKardex').addEventListener('click', ev => {
+  const e = ev.target.closest('[data-entrega]'); if (e) return abrirEntrega(e.dataset.entrega);
+  const v = ev.target.closest('[data-ver]'); if (v) return abrirMercado(v.dataset.ver);
+});
+$('#bEquitativa').onclick = () => {
+  const n = D.mercados.length, base = Math.floor(D.lote / n), resto = D.lote - base * n;
+  const { filas } = calc();
+  const bajo = [];
+  D.mercados.forEach((m, i) => {
+    const d = base + (i < resto ? 1 : 0);
+    if (d < (filas[i].ent)) bajo.push(corto(m.mercado));
+    ED[m.mercado] = Object.assign(ED[m.mercado] || {}, { dotacion: d });
+    if (String(d) === String(m.dotacion)) { delete ED[m.mercado].dotacion; if (!Object.keys(ED[m.mercado]).length) delete ED[m.mercado]; }
+  });
+  pintar();
+  toast(`Lote de ${fmt(D.lote)} repartido: ${fmt(base)} vales por mercado${resto ? ` (+1 en los primeros ${resto})` : ''}. Revisa y pulsa Guardar.` + (bajo.length ? ` Ojo: ${bajo.join(', ')} ya recibió más.` : ''), 5000);
+};
+$('#bDescartar').onclick = () => { ED = {}; pintar(); };
+$('#bGuardar').onclick = async () => {
+  const filas = Object.keys(ED).map(m => { const o = D.mercados.find(x => x.mercado === m); return { mercado: m, supervisor: val(o, 'supervisor'), dotacion: Number(val(o, 'dotacion')) || 0 }; });
+  const b = $('#bGuardar'); b.disabled = true; b.textContent = 'Guardando…';
+  try {
+    const r = await api({ tipo: 'kardex_guardar', filas });
+    if (!r.ok) { toast(r.error || 'No se pudo guardar', 6000); return; }
+    ED = {}; D = r; pintar(); toast('Kardex guardado');
+  } catch { toast('Sin conexión. Intenta de nuevo.'); }
+  finally { b.textContent = 'Guardar cambios'; b.disabled = !dirty(); }
+};
+window.addEventListener('beforeunload', e => { if (dirty()) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ---------- exportar / imprimir ---------- */
+function tablaExport() {
+  const { filas, t } = calc();
+  const head = ['Mercado', 'Supervisor', 'Dotación inicial', 'Entregado al mercado', 'Por entregar', 'Canjeado', 'Saldo en campo', 'Avance %'];
+  const rows = filas.map(f => [f.mercado, f.supervisor, f.dot, f.ent, f.porEntregar, f.cj, f.campo, f.av]);
+  rows.push(['TOTAL', '', t.dot, t.ent, t.porEntregar, t.cj, t.campo, pct(t.cj, t.dot)]);
+  rows.push([]); rows.push(['Lote maestro', D.lote]); rows.push(['Saldo en almacén central', t.almacen]); rows.push(['Avance global %', pct(t.cj, D.lote)]);
+  return [head, ...rows];
+}
+function tablaEntregas() {
+  return [['Fecha', 'Hora', 'Mercado', 'Vales', 'Recibe', 'Registró', 'Nota', 'Fotos'], ...D.entregas.map(e => [e.fecha, e.hora, e.mercado, Number(e.cantidad), e.recibe, e.supervisor, e.nota, fotosDe(e).join(' ')])];
+}
+function bajar(nombre, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+const sello = () => hoy().replace(/-/g, '');
+$('#bCsv').onclick = () => {
+  const q = v => { const s = String(v == null ? '' : v); return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const csv = [...tablaExport(), [], ['HISTORIAL DE ENTREGAS'], ...tablaEntregas()].map(r => r.map(q).join(';')).join('\r\n');
+  bajar(`kardex-vales-pavo-${sello()}.csv`, new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+};
+let xlsxCargado = null;
+$('#bXlsx').onclick = async () => {
+  try {
+    xlsxCargado = xlsxCargado || new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+    await xlsxCargado;
+    const wb = XLSX.utils.book_new();
+    const k = XLSX.utils.aoa_to_sheet(tablaExport()); k['!cols'] = [{ wch: 26 }, { wch: 20 }, ...Array(6).fill({ wch: 14 })];
+    XLSX.utils.book_append_sheet(wb, k, 'Kardex');
+    const h = XLSX.utils.aoa_to_sheet(tablaEntregas()); h['!cols'] = [{ wch: 11 }, { wch: 7 }, { wch: 26 }, { wch: 7 }, { wch: 18 }, { wch: 18 }, { wch: 30 }, { wch: 60 }];
+    XLSX.utils.book_append_sheet(wb, h, 'Entregas');
+    XLSX.writeFile(wb, `kardex-vales-pavo-${sello()}.xlsx`);
+  } catch { xlsxCargado = null; toast('No se pudo generar el Excel. Usa CSV.'); }
+};
+$('#bPrint').onclick = () => window.print();
+$('#bRecargar').onclick = () => cargar(true);
+$('#fHist').onchange = pintarHist;
+
+/* ---------- historial y visor por mercado ---------- */
+function abrirMercado(mercado, tab = 'kardex') {
+  const f = calc().filas.find(x => x.mercado === mercado); if (!f) return;
+  const movs = [];
+  D.entregas.filter(e => e.mercado === mercado).forEach(e => movs.push({ f: e.fecha, h: e.hora || '00:00', ent: Number(e.cantidad), sal: 0, d: `Entrega de vales · recibe ${e.recibe} · registró ${e.supervisor}${e.nota ? ' · ' + e.nota : ''}`, fotos: fotosDe(e).length }));
+  const dias = (D.canjes[mercado] || {}).dias || {};
+  Object.keys(dias).forEach(d => movs.push({ f: d, h: '23:59', ent: 0, sal: dias[d], d: `Canjes del día (${dias[d]} vale${dias[d] === 1 ? '' : 's'} entregados a clientes)` }));
+  movs.sort((a, b) => (a.f + a.h).localeCompare(b.f + b.h));
+  let s = 0; movs.forEach(m => { s += m.ent - m.sal; m.saldo = s; });
+  const fotos = [];
+  D.entregas.filter(e => e.mercado === mercado).slice().reverse().forEach(e => fotosDe(e).forEach((u, i) => fotos.push({ u, e, i })));
+  $('#mbox').className = 'mbox';
+  $('#mbox').innerHTML = `<div class="mhead"><div><h2>${esc(mercado)}</h2><div class="s">Supervisor: ${esc(f.supervisor || 'sin asignar')}</div></div><button class="btn" id="mClose">Cerrar</button></div>
+    <div class="mk"><div>Dotación<b>${fmt(f.dot)}</b></div><div>Entregado<b>${fmt(f.ent)}</b></div><div>Canjeado<b>${fmt(f.cj)}</b></div><div>Saldo en campo<b class="${f.campo < 0 ? 'neg' : ''}">${fmt(f.campo)}</b></div></div>
+    <div class="tabs"><button data-tab="kardex" class="${tab === 'kardex' ? 'on' : ''}">Historial cronológico</button><button data-tab="fotos" class="${tab === 'fotos' ? 'on' : ''}">Visor fotográfico (${fotos.length})</button></div>
+    <div id="tabKardex" ${tab === 'kardex' ? '' : 'hidden'}><div class="tw"><table><thead><tr><th>Fecha</th><th>Movimiento</th><th class="n">Entrada</th><th class="n">Salida</th><th class="n">Saldo</th></tr></thead>
+      <tbody>${movs.map(m => `<tr><td style="white-space:nowrap">${fCorta(m.f)}${m.ent ? ' ' + esc(m.h) : ''}</td><td>${esc(m.d)}${m.fotos ? ` <span class="st na">📷 ${m.fotos}</span>` : ''}</td>
+        <td class="n">${m.ent ? `<span class="mov-in">+${fmt(m.ent)}</span>` : ''}</td><td class="n">${m.sal ? `<span class="mov-out">−${fmt(m.sal)}</span>` : ''}</td><td class="n"><b class="${m.saldo < 0 ? 'neg' : ''}">${fmt(m.saldo)}</b></td></tr>`).join('') || '<tr><td colspan="5" class="empty">Sin movimientos</td></tr>'}</tbody></table></div></div>
+    <div id="tabFotos" ${tab === 'fotos' ? '' : 'hidden'}>${fotos.length ? `<div class="gal">${fotos.map(x => `<a class="ph" href="${esc(x.u)}" target="_blank" rel="noopener"><img src="${esc(thumb(x.u))}" alt="Entrega ${esc(x.e.fecha)}" loading="lazy"><div><b>${fmt(x.e.cantidad)} vales · ${fCorta(x.e.fecha)} ${esc(x.e.hora)}</b>${esc(x.e.recibe)} · foto ${x.i + 1}</div></a>`).join('')}</div>` : '<div class="empty">Aún no hay fotos de entregas en este mercado</div>'}</div>
+    <button class="fsend" id="mEntrega" style="max-width:320px">＋ Registrar entrega en ${esc(corto(mercado))}</button>`;
+  $('#modal').hidden = false;
+  $('#mClose').onclick = cerrarModal;
+  $('#mEntrega').onclick = () => abrirEntrega(mercado);
+  $('#mbox').querySelectorAll('[data-tab]').forEach(b => b.onclick = () => abrirMercado(mercado, b.dataset.tab));
+}
+function cerrarModal() { $('#modal').hidden = true; $('#mbox').innerHTML = ''; }
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal' && !enviando) cerrarModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#modal').hidden && !enviando) cerrarModal(); });
+
+/* ---------- formulario de entrega ---------- */
+let FOTOS = [], enviando = false, GEO = null;
+async function comprimir(file, max = 1280, q = 0.7) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', q);
+  } finally { URL.revokeObjectURL(url); }
+}
+function abrirEntrega(mercado) {
+  if (dirty()) { toast('Primero guarda o descarta los cambios del kardex'); return; }
+  FOTOS = []; GEO = null;
+  if (navigator.geolocation) navigator.geolocation.getCurrentPosition(p => { GEO = p.coords; }, () => {}, { timeout: 8000, maximumAge: 60000 });
+  const { filas } = calc();
+  $('#mbox').className = 'mbox sm';
+  $('#mbox').innerHTML = `<div class="mhead"><div><h2>Registrar entrega de vales</h2><div class="s">Vales del almacén central al mercado · ${esc(D.usuario ? D.usuario.nombre : '')}</div></div><button class="btn" id="mClose">Cerrar</button></div>
+    <form class="f" id="fEnt" novalidate>
+      <label for="eMerc">Mercado</label>
+      <select id="eMerc"><option value="">Elige el mercado…</option>${filas.map(f => `<option${f.mercado === mercado ? ' selected' : ''}>${esc(f.mercado)}</option>`).join('')}</select>
+      <div class="row"><div><label for="eCant">Cantidad de vales</label><input id="eCant" type="number" min="1" step="1" inputmode="numeric" placeholder="0"></div>
+        <div><label for="eRecibe">Recibe en el mercado</label><input id="eRecibe" type="text" placeholder="Nombre de quien recibe" autocomplete="off"></div></div>
+      <div class="saldo" id="eSaldo"></div>
+      <label>Evidencia fotográfica <span style="font-weight:400;color:var(--muted)">(mínimo 1, máximo ${MAX_FOTOS})</span></label>
+      <div class="fotobtns">
+        <label class="fbtn"><span class="ic">📷</span>Foto instantánea<small>Abre la cámara</small><input id="eCam" type="file" accept="image/*" capture="environment"></label>
+        <label class="fbtn"><span class="ic">🖼️</span>Subir de galería<small>Puedes elegir varias</small><input id="eGal" type="file" accept="image/*" multiple></label>
+      </div>
+      <div class="thumbs" id="eThumbs"></div>
+      <label for="eNota">Nota <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+      <textarea id="eNota" placeholder="Ej.: talonario del 001 al 050"></textarea>
+      <div class="ferr" id="eErr" hidden></div>
+      <button class="fsend" id="eGo" type="submit">Registrar entrega</button>
+    </form>`;
+  $('#modal').hidden = false;
+  $('#mClose').onclick = () => { if (!enviando) cerrarModal(); };
+  ['eMerc', 'eCant'].forEach(id => $('#' + id).addEventListener('input', saldoForm));
+  $('#eCam').onchange = ev => agregarFotos(ev.target.files, 'Cámara');
+  $('#eGal').onchange = ev => agregarFotos(ev.target.files, 'Galería');
+  $('#eThumbs').onclick = ev => { const b = ev.target.closest('button[data-i]'); if (b) { FOTOS.splice(Number(b.dataset.i), 1); pintarFotos(); } };
+  $('#fEnt').onsubmit = enviarEntrega;
+  saldoForm(); pintarFotos();
+  setTimeout(() => (mercado ? $('#eCant') : $('#eMerc')).focus(), 50);
+}
+function saldoDe(mercado) {
+  const { filas, t } = calc(), f = filas.find(x => x.mercado === mercado);
+  return f ? { f, mercado: f.porEntregar, almacen: t.almacen, disp: Math.min(f.porEntregar, t.almacen) } : null;
+}
+function saldoForm() {
+  const m = $('#eMerc').value, c = Math.floor(Number($('#eCant').value)) || 0, box = $('#eSaldo');
+  if (!m) { box.className = 'saldo'; box.innerHTML = 'Elige el mercado para ver su saldo disponible'; return; }
+  const s = saldoDe(m);
+  const bad = !s.f.dot || c > s.disp;
+  box.className = 'saldo' + (bad ? ' bad' : '');
+  box.innerHTML = !s.f.dot ? `${esc(corto(m))} no tiene dotación asignada. Asígnala en el kardex antes de entregar.`
+    : `<span>Dotación<br><b>${fmt(s.f.dot)}</b></span><span>Ya entregado<br><b>${fmt(s.f.ent)}</b></span><span>Disponible para entregar<br><b>${fmt(Math.max(0, s.disp))}</b></span><span>Almacén central<br><b>${fmt(s.almacen)}</b></span>`
+      + (c > s.disp ? `<span style="flex-basis:100%">⚠️ ${fmt(c)} vales supera el saldo disponible (${fmt(Math.max(0, s.disp))}).</span>` : '');
+}
+async function agregarFotos(files, origen) {
+  const lista = [...(files || [])];
+  if (!lista.length) return;
+  const libre = MAX_FOTOS - FOTOS.length;
+  if (libre <= 0) { toast(`Máximo ${MAX_FOTOS} fotos`); return; }
+  if (lista.length > libre) toast(`Solo se agregaron ${libre} foto${libre === 1 ? '' : 's'} (máximo ${MAX_FOTOS})`);
+  for (const f of lista.slice(0, libre)) {
+    try { FOTOS.push({ src: await comprimir(f), origen }); } catch { toast('No se pudo leer una de las fotos'); }
+  }
+  $('#eCam').value = ''; $('#eGal').value = '';
+  pintarFotos();
+}
+function pintarFotos() {
+  $('#eThumbs').innerHTML = FOTOS.map((f, i) => `<div><img src="${f.src}" alt="Foto ${i + 1}"><button type="button" data-i="${i}" aria-label="Quitar foto">✕</button><span>${f.origen}</span></div>`).join('');
+}
+async function enviarEntrega(ev) {
+  ev.preventDefault();
+  if (enviando) return;
+  const err = m => { $('#eErr').textContent = m; $('#eErr').hidden = !m; };
+  const mercado = $('#eMerc').value, cant = Number($('#eCant').value), recibe = $('#eRecibe').value.trim();
+  if (!mercado) return err('Elige el mercado');
+  if (!cant || cant < 1 || Math.floor(cant) !== cant) return err('Indica la cantidad de vales (número entero)');
+  const s = saldoDe(mercado);
+  if (!s.f.dot) return err('Este mercado no tiene dotación asignada');
+  if (cant > s.disp) return err(`Saldo insuficiente: disponible ${Math.max(0, s.disp)} vales para ${corto(mercado)}`);
+  if (!recibe) return err('Indica quién recibe los vales');
+  if (!FOTOS.length) return err('Agrega al menos una foto de la entrega');
+  err(''); enviando = true; const b = $('#eGo'); b.disabled = true; b.textContent = `Subiendo ${FOTOS.length} foto${FOTOS.length === 1 ? '' : 's'}…`;
+  const body = { tipo: 'kardex_entrega', id: 'K' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), mercado, cantidad: cant, recibe, nota: $('#eNota').value.trim(), fotos: FOTOS.map(f => f.src), capturado: new Date().toISOString(), lat: GEO ? GEO.latitude : '', lng: GEO ? GEO.longitude : '' };
+  try {
+    let r;
+    for (let intento = 0; intento < 2; intento++) { // mismo id: si se corta la conexión, reintentar no duplica
+      try { r = await api(body); break; } catch (e) { if (intento) throw e; }
+    }
+    if (!r.ok) { err(r.error || 'No se pudo registrar'); return; }
+    D = r; enviando = false; cerrarModal(); pintar();
+    toast(`Entrega registrada: ${fmt(cant)} vales a ${corto(mercado)}`);
+  } catch { err('Sin conexión. Revisa la señal e intenta de nuevo (no se duplicará).'); }
+  finally { enviando = false; if (b.isConnected) { b.disabled = false; b.textContent = 'Registrar entrega'; } }
+}
+$('#bEntrega').onclick = () => abrirEntrega('');
+
+/* ---------- carga y login ---------- */
+function mostrarLogin(msg) {
+  $('#login').hidden = false; $('#btnSalir').hidden = true;
+  $('#gErr').textContent = msg || ''; $('#gErr').hidden = !msg;
+  setTimeout(() => $('#gUsuario').focus(), 50);
+}
+async function cargar(manual) {
+  if (!DEMO && !CI) return mostrarLogin();
+  if (dirty() && !manual) return; // no pisar ediciones en curso
+  try {
+    const r = await api({ tipo: 'kardex' });
+    if (!r.ok && r.code === 'auth') { CI = null; guardarCI(null); return mostrarLogin(r.error || 'Vuelve a ingresar'); }
+    if (!r.ok) { if (/solo para supervisores/.test(r.error || '')) { CI = null; guardarCI(null); return mostrarLogin(r.error); } throw new Error(r.error); }
+    D = r; if (manual) ED = {};
+    $('#login').hidden = true; $('#btnSalir').hidden = DEMO;
+    pintar();
+    $('#live').classList.remove('off');
+    $('#liveTxt').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+    $('#banner').innerHTML = DEMO ? '<div class="demo-banner">Vista de ejemplo con datos ficticios. Los cambios no se guardan.</div>' : '';
+  } catch (e) {
+    $('#live').classList.add('off'); $('#liveTxt').textContent = 'Sin conexión';
+    if (!D) toast('No se pudo cargar el kardex. Revisa tu conexión.');
+  }
+}
+$('#loginForm').onsubmit = async ev => {
+  ev.preventDefault();
+  const usuario = $('#gUsuario').value.trim(), clave = $('#gClave').value;
+  const err = m => { $('#gErr').textContent = m; $('#gErr').hidden = !m; };
+  if (!usuario || !clave) return err('Escribe tu usuario y contraseña');
+  err(''); $('#gBtn').disabled = true; $('#gBtn').textContent = 'Ingresando…';
+  try {
+    CI = { usuario, clave };
+    const r = await api({ tipo: 'kardex' });
+    if (!r.ok) { CI = null; return err(r.error || 'No se pudo ingresar'); }
+    guardarCI(CI); $('#gClave').value = ''; D = r; ED = {};
+    $('#login').hidden = true; $('#btnSalir').hidden = false; pintar();
+    $('#live').classList.remove('off'); $('#liveTxt').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+  } catch { CI = null; err('Sin conexión. Intenta de nuevo.'); }
+  finally { $('#gBtn').disabled = false; $('#gBtn').textContent = 'Ingresar'; }
+};
+$('#btnSalir').onclick = () => { if (dirty() && !confirm('Tienes cambios sin guardar. ¿Salir igual?')) return; CI = null; guardarCI(null); D = null; ED = {}; mostrarLogin(); };
+setInterval(() => { if (!document.hidden && $('#modal').hidden && !dirty()) cargar(); }, 120000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && $('#modal').hidden && !dirty() && D) cargar(); });
+
+/* ---------- datos de ejemplo ---------- */
+let DM = null;
+function demoApi(b) {
+  if (!DM) {
+    const merc = C.MERCADOS || ['Caquetá', 'Huamantanga', 'Fiori', 'Unicachi Norte Mayorista', 'Unicachi Norte Minorista', 'Parada', 'Unicachi Sur', 'Mercado Productores', 'Ciudad de Dios'];
+    const canjes = {}, entregas = [];
+    const img = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#dfe3fb"/><text x="200" y="160" font-family="sans-serif" font-size="22" text-anchor="middle" fill="#3b47e0">Foto de entrega</text></svg>');
+    merc.forEach((m, i) => {
+      const dias = {}; let tot = 0;
+      for (let d = 9; d <= 19; d++) { if (d === 15) continue; const n = (i * 3 + d) % 7 + 2; dias[`2026-11-${String(d).padStart(2, '0')}`] = n; tot += n; }
+      canjes[m] = { total: tot, dias };
+      entregas.push({ id: 'd' + i, fecha: '2026-11-08', hora: '17:30', mercado: m, cantidad: 60, recibe: 'Impulsadora ' + (i + 1), supervisor: 'Supervisor ' + (i % 2 + 1), nota: 'Primera entrega', fotos: img });
+      if (i % 3 !== 2) entregas.push({ id: 'e' + i, fecha: '2026-11-15', hora: '08:10', mercado: m, cantidad: 30, recibe: 'Impulsadora ' + (i + 1), supervisor: 'Supervisor ' + (i % 2 + 1), nota: '', fotos: img + ' ' + img });
+    });
+    entregas.sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
+    DM = { ok: true, lote: 1350, usuario: { nombre: 'Coordinador de Trade' }, supervisores: ['Supervisor 1', 'Supervisor 2', 'Coordinador de Trade'],
+      mercados: merc.map((m, i) => ({ mercado: m, supervisor: 'Supervisor ' + (i % 2 + 1), dotacion: 150 })), entregas, canjes };
+  }
+  const copia = () => JSON.parse(JSON.stringify(DM));
+  if (b.tipo === 'kardex_guardar') {
+    const total = DM.mercados.reduce((s, m) => { const f = b.filas.find(x => x.mercado === m.mercado); return s + (f ? f.dotacion : m.dotacion); }, 0);
+    if (total > DM.lote) return { ok: false, error: `La dotación total (${total}) excede el lote maestro de ${DM.lote} vales` };
+    b.filas.forEach(f => Object.assign(DM.mercados.find(m => m.mercado === f.mercado), f));
+  }
+  if (b.tipo === 'kardex_entrega') DM.entregas.push({ id: b.id, fecha: hoy(), hora: new Date().toTimeString().slice(0, 5), mercado: b.mercado, cantidad: b.cantidad, recibe: b.recibe, supervisor: DM.usuario.nombre, nota: b.nota, fotos: b.fotos.join(' ') });
+  return new Promise(r => setTimeout(() => r(copia()), 250));
+}
+
+cargar();
+})();
+</script>
+</body>
+</html>
