@@ -76,6 +76,9 @@ const STOCK_TURNOS = ['Apertura', 'Cierre'];
 const STOCK_BAJO = 3; // menos de 3 sacos = bajo stock
 const LOTE_MAESTRO = 1350; // vales de pavo de 7 kg impresos (se puede cambiar en Config: kardex_lote_maestro)
 const KARDEX_MAX_FOTOS = 8;
+// Cambios de meta diaria: desde esa fecha (incluida) rige la nueva meta. Igual que META_CAMBIOS en config.js.
+const META_CAMBIOS = [{ desde: '2026-11-21', meta: 8 }];
+function metaDe_(fecha, base) { let m = base; META_CAMBIOS.forEach(function (c) { if (fecha >= c.desde) m = c.meta; }); return m; }
 
 // Columnas que se guardan como texto (para que Sheets no las convierta en fecha/número).
 const COLUMNAS_TEXTO = ['id', 'fecha', 'hora', 'celular', 'n_comprobante', 'codigos_vale', 'codigo', 'pedido_id', 'pin', 'valor',
@@ -471,7 +474,7 @@ function verificarVale_(b, u) {
 function panel_(u) {
   if (!esJefe_(u)) throw val_('El panel es solo para supervisores y coordinador');
   const t = cuando_(), cfg = config_();
-  const meta = Number(cfg.meta_diaria_por_impulsadora) || 6;
+  const meta = metaDe_(t.fecha, Number(cfg.meta_diaria_por_impulsadora) || 6);
   const ingreso = /^\d{1,2}:\d{2}$/.test(cfg.hora_ingreso || '') ? ('0' + cfg.hora_ingreso).slice(-5) : '09:00';
   const limite = minAHora_(horaAMin_(ingreso) + 10);
   const equipo = leer_('Equipo').filter(function (x) { return !/^no$/i.test(x.activo); });

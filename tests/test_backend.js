@@ -219,5 +219,6 @@ ok('migración agrega usuario y contraseña', sheets.Equipo.rows[0].join() === '
 ok('login tolerante: "Unicachi Sur" y clave en mayúsculas', post({ tipo: 'login', usuario: ' Unicachi Sur ', clave: sheets.Equipo.rows.find(e => e[5] === 'unicachi.sur')[6].toUpperCase() }).ok);
 ok('login cliente con clave en mayúsculas', !!post({ tipo: 'login_cliente', usuario: 'RINTI', clave: cfg.cliente_clave.toUpperCase() }).k);
 ok('migración tampoco duplica jefes', sh('Equipo').filter(e => e.rol === 'coordinador').length === 1 && sh('Equipo').length === 12);
+ok('meta 6 hasta el 20/11 y 8 desde el 21/11', metaDe_('2026-11-20', 6) === 6 && metaDe_('2026-11-21', 6) === 8 && metaDe_('2026-11-30', 6) === 8);
 ok('hora sin cero se normaliza', hhmm_('9:05') === '09:05' && hhmm_('13:40') === '13:40' && hhmm_('') === '');
 res.join('\n');
