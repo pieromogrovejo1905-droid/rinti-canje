@@ -10,7 +10,7 @@
 const TZ = 'America/Lima';
 const KG = { ricocan: 22, ricocat: 15, ricocan15: 15, ricocat9: 9 };
 const P = PropertiesService.getScriptProperties();
-const VERSION_ESQUEMA = '6';
+const VERSION_ESQUEMA = '7';
 
 const MERCADOS = [
   'Fiori', 'Unicachi Norte Mayorista', 'Unicachi Norte Minorista', 'Unicachi Sur',
@@ -58,6 +58,9 @@ const ESQUEMA = {
   // Lista de vales impresos. Si tiene códigos, solo se aceptan esos (y del mercado indicado, si se llena).
   Talonario: ['codigo', 'mercado', 'nota'],
   Config: ['clave', 'valor', 'nota'],
+  // Kardex interno de vales de pavo: dotación por mercado y vales que el supervisor lleva del almacén al mercado.
+  KardexMercado: ['mercado', 'supervisor', 'dotacion', 'actualizado', 'actualizado_por'],
+  KardexEntregas: ['id', 'registrado', 'fecha', 'hora', 'mercado', 'cantidad', 'recibe', 'supervisor', 'nota', 'fotos', 'lat', 'lng'],
   // Relevo de stock de los promotores: una fila por relevo, 6 columnas por presentación.
   Stock: ['id', 'registrado', 'fecha', 'hora', 'promotor', 'mercado', 'turno'].concat(
     ['rc22', 'rc15', 'rt15', 'rt9'].reduce(function (a, k) {
@@ -71,6 +74,8 @@ const STOCK_SKUS = { rc22: 'Ricocan 22 kg', rc15: 'Ricocan 15 kg', rt15: 'Ricoca
 const STOCK_ESTADOS = ['Con stock', 'Quiebre total', 'No trabaja este SKU'];
 const STOCK_TURNOS = ['Apertura', 'Cierre'];
 const STOCK_BAJO = 3; // menos de 3 sacos = bajo stock
+const LOTE_MAESTRO = 1350; // vales de pavo de 7 kg impresos (se puede cambiar en Config: kardex_lote_maestro)
+const KARDEX_MAX_FOTOS = 8;
 
 // Columnas que se guardan como texto (para que Sheets no las convierta en fecha/número).
 const COLUMNAS_TEXTO = ['id', 'fecha', 'hora', 'celular', 'n_comprobante', 'codigos_vale', 'codigo', 'pedido_id', 'pin', 'valor',
@@ -205,6 +210,9 @@ function doPost(e) {
     }
     if (b.tipo === 'validar') return out_(validar_(b, u));
     if (b.tipo === 'completar_canje') return out_(completarCanje_(b, u));
+    if (b.tipo === 'kardex') return out_(kardex_(u));
+    if (b.tipo === 'kardex_guardar') return out_(kardexGuardar_(b, u));
+    if (b.tipo === 'kardex_entrega') return out_(kardexEntrega_(b, u));
     const fn = { asistencia: asistencia_, pedido: pedido_, incidencia: incidencia_, cierre: cierre_, stock: stock_ }[b.tipo];
     if (!fn) return out_({ ok: false, code: 'val', error: 'Tipo de registro desconocido' });
     if (!b.id) return out_({ ok: false, code: 'val', error: 'Falta el id del registro' });
@@ -578,6 +586,116 @@ function stock_(b, u) {
   });
 }
 
+/* ------------------------------------------------------------------ */
+/* Kardex interno de vales de pavo (7 kg)                              */
+/* ------------------------------------------------------------------ */
+
+function loteMaestro_() { return entero_(config_().kardex_lote_maestro) || LOTE_MAESTRO; }
+
+function kardexMercados_() {
+  const previo = {};
+  leer_('KardexMercado').forEach(function (f) { previo[f.mercado] = f; });
+  return MERCADOS.map(function (m) {
+    const f = previo[m] || {};
+    return { mercado: m, supervisor: f.supervisor || '', dotacion: entero_(f.dotacion), actualizado: f.actualizado || '', actualizado_por: f.actualizado_por || '' };
+  });
+}
+
+function kardexEntregado_(entregas) {
+  const t = {};
+  entregas.forEach(function (e) { t[e.mercado] = (t[e.mercado] || 0) + entero_(e.cantidad); });
+  return t;
+}
+
+/** Vales canjeados por mercado y por día, tomados de los canjes que registran las impulsadoras. */
+function kardexCanjes_() {
+  const t = {};
+  leer_('Pedidos').forEach(function (p) {
+    const n = entero_(p.vales);
+    if (p.es_canje !== 'SÍ' && n <= 0) return;
+    const v = n || 1, m = t[p.mercado] || (t[p.mercado] = { total: 0, dias: {} });
+    m.total += v; m.dias[p.fecha] = (m.dias[p.fecha] || 0) + v;
+  });
+  return t;
+}
+
+function kardex_(u) {
+  if (!esJefe_(u)) throw val_('El kardex es solo para supervisores y coordinador');
+  return {
+    ok: true, generado: ahora_(), usuario: u, lote: loteMaestro_(),
+    mercados: kardexMercados_(), entregas: leer_('KardexEntregas'), canjes: kardexCanjes_(),
+    supervisores: equipoPublico_().filter(function (e) { return esJefe_(e); }).map(function (e) { return e.nombre; }),
+  };
+}
+
+function kardexGuardar_(b, u) {
+  if (!esJefe_(u)) throw val_('El kardex es solo para supervisores y coordinador');
+  const filas = Array.isArray(b.filas) ? b.filas : [];
+  const nuevo = {};
+  filas.forEach(function (f) {
+    if (MERCADOS.indexOf(f.mercado) < 0) throw val_('Mercado desconocido: ' + limpio_(f.mercado));
+    const d = Number(f.dotacion);
+    if (!isFinite(d) || d < 0 || Math.floor(d) !== d) throw val_('La dotación de ' + f.mercado + ' debe ser un número entero');
+    nuevo[f.mercado] = { supervisor: limpio_(f.supervisor).slice(0, 80), dotacion: d };
+  });
+  return conLock_(function () {
+    const lote = loteMaestro_(), actual = kardexMercados_(), ent = kardexEntregado_(leer_('KardexEntregas'));
+    const final = actual.map(function (a) { return Object.assign({}, a, nuevo[a.mercado] || {}); });
+    const total = final.reduce(function (s, f) { return s + f.dotacion; }, 0);
+    if (total > lote) throw val_('La dotación total (' + total + ') excede el lote maestro de ' + lote + ' vales');
+    final.forEach(function (f) {
+      if (f.dotacion < (ent[f.mercado] || 0)) throw val_('La dotación de ' + f.mercado + ' no puede ser menor que lo ya entregado (' + ent[f.mercado] + ')');
+    });
+    const t = ahora_();
+    const sh = hoja_('KardexMercado');
+    sh.getRange(2, 1, final.length, ESQUEMA.KardexMercado.length).setValues(final.map(function (f) {
+      const cambio = nuevo[f.mercado];
+      return [f.mercado, f.supervisor, f.dotacion, cambio ? t : f.actualizado, cambio ? u.nombre : f.actualizado_por];
+    }));
+    return kardex_(u);
+  });
+}
+
+function kardexEntrega_(b, u) {
+  if (!esJefe_(u)) throw val_('Solo el supervisor o el coordinador registra entregas de vales');
+  if (!b.id) throw val_('Falta el id del registro');
+  if (existeId_('KardexEntregas', b.id)) return Object.assign(kardex_(u), { duplicado: true });
+  const mercado = limpio_(b.mercado);
+  if (MERCADOS.indexOf(mercado) < 0) throw val_('Elige el mercado');
+  const cant = Number(b.cantidad);
+  if (!isFinite(cant) || cant <= 0 || Math.floor(cant) !== cant) throw val_('Indica la cantidad de vales (número entero mayor a 0)');
+  if (!limpio_(b.recibe)) throw val_('Indica quién recibe los vales en el mercado');
+  const fotos = (Array.isArray(b.fotos) ? b.fotos : []).filter(Boolean);
+  if (!fotos.length) throw val_('Agrega al menos una foto de la entrega');
+  if (fotos.length > KARDEX_MAX_FOTOS) throw val_('Máximo ' + KARDEX_MAX_FOTOS + ' fotos por entrega');
+  const saldo = function () {
+    const dot = (kardexMercados_().find(function (m) { return m.mercado === mercado; }) || {}).dotacion || 0;
+    const entregas = leer_('KardexEntregas'), ent = kardexEntregado_(entregas);
+    const totalEnt = Object.keys(ent).reduce(function (s, k) { return s + ent[k]; }, 0);
+    return { mercado: dot - (ent[mercado] || 0), almacen: loteMaestro_() - totalEnt, dot: dot };
+  };
+  const revisar = function (sd) {
+    if (!sd.dot) return 'Primero asigna la dotación de ' + mercado + ' en el kardex';
+    if (cant > sd.mercado) return 'Saldo por entregar de ' + mercado + ': ' + Math.max(0, sd.mercado) + ' vales. No alcanza para ' + cant;
+    if (cant > sd.almacen) return 'En el almacén central quedan ' + Math.max(0, sd.almacen) + ' vales. No alcanza para ' + cant;
+    return '';
+  };
+  const e0 = revisar(saldo()); if (e0) throw val_(e0);
+  const t = cuando_(b.capturado), subidas = [];
+  const base = t.fecha + '_kardex_' + mercado + '_' + cant + 'vales';
+  const urls = fotos.map(function (f, i) { return foto_(f, base + '_' + (i + 1), t.fecha, subidas); });
+  return conLock_(function () {
+    if (existeId_('KardexEntregas', b.id)) { borrar_(subidas); return Object.assign(kardex_(u), { duplicado: true }); }
+    const e1 = revisar(saldo()); if (e1) { borrar_(subidas); throw val_(e1); }
+    agregar_('KardexEntregas', {
+      id: limpio_(b.id), registrado: ahora_(), fecha: t.fecha, hora: t.hora, mercado: mercado, cantidad: cant,
+      recibe: limpio_(b.recibe).slice(0, 80), supervisor: u.nombre, nota: limpio_(b.nota), fotos: urls.join(' '),
+      lat: num_(b.lat), lng: num_(b.lng),
+    });
+    return kardex_(u);
+  });
+}
+
 function cierre_(b, u) {
   if (!esJefe_(u)) throw val_('Solo el supervisor o el coordinador puede enviar el cierre');
   if (existeId_('Cierres', b.id)) return { ok: true, duplicado: true };
@@ -650,7 +768,7 @@ function asegurarAccesos_() {
   if (P.getProperty('ESQUEMA') === VERSION_ESQUEMA && config_().cliente_clave) return;
   conLock_(function () {
     if (P.getProperty('ESQUEMA') === VERSION_ESQUEMA && config_().cliente_clave) return; // otro pedido ya lo hizo
-    ['Pedidos', 'Equipo', 'Talonario', 'Stock'].forEach(function (nombre) {
+    ['Pedidos', 'Equipo', 'Talonario', 'Stock', 'KardexMercado', 'KardexEntregas'].forEach(function (nombre) {
       const cols = ESQUEMA[nombre];
       const sh = hoja_(nombre) || ss_().insertSheet(nombre);
       if (sh.getLastRow() === 0) sh.setFrozenRows(1);

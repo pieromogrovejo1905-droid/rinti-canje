@@ -191,6 +191,27 @@ ok('validar: queda Válido con quién y cuándo', r.ok && p2v.validacion === 'V�
 post({ ...S, tipo: 'validar', id: 'p5', validacion: 'Observado', nota: 'foto borrosa' });
 ok('validar: observado guarda la nota', /foto borrosa/.test(sh('Pedidos').find(p => p.id === 'p5').observaciones));
 ok('validar: id inexistente', /No se encontró/.test(post({ ...S, tipo: 'validar', id: 'zz', validacion: 'Válido' }).error));
+// Kardex de vales de pavo
+let k = post({ ...S, tipo: 'kardex' });
+ok('kardex: 9 mercados, lote 1350, sin dotación', k.ok && k.mercados.length === 9 && k.lote === 1350 && k.mercados.every(m => m.dotacion === 0), JSON.stringify(k).slice(0, 120));
+ok('kardex: canjes por mercado desde Pedidos', k.canjes.Fiori && k.canjes.Fiori.total > 0, JSON.stringify(k.canjes));
+ok('kardex: impulsadora no entra', /solo para supervisores/.test(post({ ...F, tipo: 'kardex' }).error));
+ok('kardex: dotación no puede exceder el lote', /excede el lote/.test(post({ ...S, tipo: 'kardex_guardar', filas: k.mercados.map(m => ({ mercado: m.mercado, dotacion: 200 })) }).error));
+ok('kardex: dotación entera', /entero/.test(post({ ...S, tipo: 'kardex_guardar', filas: [{ mercado: 'Fiori', dotacion: 1.5 }] }).error));
+k = post({ ...S, tipo: 'kardex_guardar', filas: k.mercados.map(m => ({ mercado: m.mercado, supervisor: 'Supervisor 1', dotacion: 150 })) });
+ok('kardex: guarda dotación y supervisor', k.ok && k.mercados.every(m => m.dotacion === 150 && m.supervisor === 'Supervisor 1') && sheets.KardexMercado.rows.length === 10, JSON.stringify(k.mercados[0]));
+const KE = { ...S, tipo: 'kardex_entrega', mercado: 'Fiori', recibe: 'Ana', fotos: [FOTO, FOTO] };
+ok('entrega: pide foto', /al menos una foto/.test(post({ ...KE, id: 'k0', cantidad: 10, fotos: [] }).error));
+ok('entrega: pide quién recibe', /quién recibe/.test(post({ ...KE, id: 'k0', cantidad: 10, recibe: '' }).error));
+ok('entrega: cantidad válida', /cantidad/.test(post({ ...KE, id: 'k0', cantidad: 0 }).error));
+k = post({ ...KE, id: 'k1', cantidad: 100 });
+ok('entrega: se registra con 2 fotos', k.ok && k.entregas.length === 1 && k.entregas[0].fotos.split(' ').length === 2 && k.entregas[0].supervisor === sup.nombre, JSON.stringify(k.entregas));
+ok('entrega: id repetido no duplica', post({ ...KE, id: 'k1', cantidad: 100 }).duplicado && sh('KardexEntregas').length === 1);
+const nf = Object.keys(files).length;
+ok('entrega: valida saldo del mercado', /Saldo por entregar de Fiori: 50/.test(post({ ...KE, id: 'k2', cantidad: 51 }).error));
+ok('entrega: rechazo no deja fotos', Object.keys(files).length === nf);
+ok('kardex: dotación no baja de lo entregado', /menor que lo ya entregado \(100\)/.test(post({ ...S, tipo: 'kardex_guardar', filas: [{ mercado: 'Fiori', dotacion: 90 }] }).error));
+ok('entrega: impulsadora no puede', /Solo el supervisor/.test(post({ ...KE, ...F, id: 'k3', cantidad: 1 }).error));
 // Migración: hoja antigua con 5 columnas en Equipo
 const viejo = sheets.Equipo.rows; viejo.forEach(x => x.length = 5); viejo[0] = ['nombre', 'pin', 'rol', 'mercado', 'activo'];
 props.ESQUEMA = '1'; get({ action: 'config' });
