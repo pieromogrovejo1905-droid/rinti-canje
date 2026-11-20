@@ -69,7 +69,7 @@ window.RINTI = {
   ],
 
   // Mercados donde la foto del comprobante y la del cliente con el vale también se pueden subir desde la galería (ventas por reparto).
-  GALERIA_COMPROBANTE: ['Huamantanga', 'Unicachi Sur'],
+  GALERIA_COMPROBANTE: ['Huamantanga', 'Unicachi Sur', 'Mercado Productores'],
 
   TIPOS_INCIDENCIA: [
     'Quiebre de stock Ricocan / Ricocat',
