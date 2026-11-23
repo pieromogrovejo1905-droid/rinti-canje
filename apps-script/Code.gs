@@ -77,8 +77,13 @@ const STOCK_BAJO = 3; // menos de 3 sacos = bajo stock
 const LOTE_MAESTRO = 1350; // vales de pavo de 7 kg impresos (se puede cambiar en Config: kardex_lote_maestro)
 const KARDEX_MAX_FOTOS = 8;
 // Cambios de meta diaria: desde esa fecha (incluida) rige la nueva meta. Igual que META_CAMBIOS en config.js.
-const META_CAMBIOS = [{ desde: '2026-11-21', meta: 8 }];
-function metaDe_(fecha, base) { let m = base; META_CAMBIOS.forEach(function (c) { if (fecha >= c.desde) m = c.meta; }); return m; }
+// Con 'mercados', el cambio aplica solo a esos mercados.
+const META_CAMBIOS = [{ desde: '2026-11-21', meta: 8 }, { desde: '2026-11-23', meta: 9, mercados: ['Ciudad de Dios', 'Unicachi Sur'] }];
+function metaDe_(fecha, base, mercado) {
+  let m = base;
+  META_CAMBIOS.forEach(function (c) { if (fecha >= c.desde && (!c.mercados || c.mercados.indexOf(mercado) >= 0)) m = c.meta; });
+  return m;
+}
 
 // Columnas que se guardan como texto (para que Sheets no las convierta en fecha/número).
 const COLUMNAS_TEXTO = ['id', 'fecha', 'hora', 'celular', 'n_comprobante', 'codigos_vale', 'codigo', 'pedido_id', 'pin', 'valor',
@@ -474,7 +479,7 @@ function verificarVale_(b, u) {
 function panel_(u) {
   if (!esJefe_(u)) throw val_('El panel es solo para supervisores y coordinador');
   const t = cuando_(), cfg = config_();
-  const meta = metaDe_(t.fecha, Number(cfg.meta_diaria_por_impulsadora) || 6);
+  const base = Number(cfg.meta_diaria_por_impulsadora) || 6, meta = metaDe_(t.fecha, base);
   const ingreso = /^\d{1,2}:\d{2}$/.test(cfg.hora_ingreso || '') ? ('0' + cfg.hora_ingreso).slice(-5) : '09:00';
   const limite = minAHora_(horaAMin_(ingreso) + 10);
   const equipo = leer_('Equipo').filter(function (x) { return !/^no$/i.test(x.activo); });
@@ -492,7 +497,7 @@ function panel_(u) {
     const i = inc.filter(function (r) { return r.mercado === m; }).sort(porHora);
     const horas = a.concat(p, i).map(function (r) { return r.hora; }).sort();
     return {
-      nombre: x.nombre, mercado: m, celular: limpio_(x.celular),
+      nombre: x.nombre, mercado: m, celular: limpio_(x.celular), meta: metaDe_(t.fecha, base, m),
       entrada: ent ? ent.hora : '', foto_entrada: ent ? ent.foto : '', tarde: !!ent && ent.hora > limite,
       salida: sal ? sal.hora : '',
       canjes: p.filter(function (r) { return r.es_canje === 'SÍ'; }).length, pedidos: p.length,
