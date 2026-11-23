@@ -385,9 +385,21 @@ async function cargar(pre) {
 }
 
 // Meta diaria por impulsadora según la fecha (C.META_CAMBIOS): cada día se mide con la meta que regía ese día.
-const metaDe = f => { let m = D.meta; (C.META_CAMBIOS || []).forEach(c => { if (f >= c.desde) m = c.meta; }); return m; };
-const sumMeta = fechas => fechas.reduce((s, f) => s + metaDe(f), 0);
-const metaTxt = fechas => { const v = [...new Set(fechas.map(metaDe))]; if (v.length < 2) return String(v[0] ?? D.meta); const c = (C.META_CAMBIOS || []).filter(x => fechas.some(f => f >= x.desde)).pop(); return `${v[0]} (desde el ${fCorta(c.desde)}: ${v[v.length - 1]})`; };
+// Un cambio con 'mercados' aplica solo a esos mercados; sin mercado se toma la meta general.
+const metaDe = (f, mer) => { let m = D.meta; (C.META_CAMBIOS || []).forEach(c => { if (f >= c.desde && (!c.mercados || c.mercados.includes(mer))) m = c.meta; }); return m; };
+const sumMeta = (fechas, mer) => fechas.reduce((s, f) => s + metaDe(f, mer), 0);
+// Meta del día de todo el equipo visible (o del mercado filtrado), con las metas propias de cada mercado.
+const metaEquipo = f => F.mercado ? metaDe(f, F.mercado) * impulsadorasPorMercado(F.mercado)
+  : D.plan * metaDe(f) + D.mercados.reduce((s, m) => s + impulsadorasPorMercado(m) * (metaDe(f, m) - metaDe(f)), 0);
+const metaTxt = (fechas, mer) => {
+  mer = mer || F.mercado || undefined;
+  const ini = fechas.length ? fechas[0] : hoy();
+  // Meta del primer día y, entre paréntesis, los cambios que entran en el periodo
+  const notas = (C.META_CAMBIOS || []).filter(c => c.desde > ini && fechas.some(f => f >= c.desde) && (!c.mercados || !mer || c.mercados.includes(mer)))
+    .map(c => `${c.meta}${c.mercados && !mer ? ' en ' + c.mercados.join(' y ') : ''} desde el ${fCorta(c.desde)}`);
+  const ya = !mer ? (C.META_CAMBIOS || []).filter(c => c.mercados && c.desde <= ini).map(c => `${c.meta} en ${c.mercados.join(' y ')}`) : [];
+  return `${metaDe(ini, mer)}${[...ya, ...notas].length ? ` (${[...ya, ...notas].join('; ')})` : ''}`;
+};
 function normalizar() {
   const cfg = D.config || {};
   D.meta = num(cfg.meta_diaria_por_impulsadora) || C.META_DIARIA;
@@ -451,7 +463,7 @@ function pintar() {
   const P = filtrar(D.pedidos), A = filtrar(D.asistencia), I = filtrar(D.incidencias), CIE = filtrar(D.cierres);
   const dias = diasOperacion();
   const imp = F.mercado ? impulsadorasPorMercado(F.mercado) : D.plan;
-  const meta = imp * sumMeta(dias);
+  const meta = dias.reduce((s, f) => s + metaEquipo(f), 0);
   const canjes = P.filter(p => p._canje);
   const vales = canjes.reduce((s, p) => s + p._vales, 0);
   const rc = P.reduce((s, p) => s + p._rc, 0), rt = P.reduce((s, p) => s + p._rt, 0), kg = P.reduce((s, p) => s + p._kg, 0);
@@ -464,7 +476,7 @@ function pintar() {
   $('#printHdr').textContent = `Reporte ${ra === rb ? fCorta(ra) : fCorta(ra) + ' al ' + fCorta(rb)} · ${F.mercado || 'Todos los mercados'} · generado ${new Date().toLocaleString('es-PE')}`;
 
   $('#kpis').innerHTML = [
-    kpi('Canjes realizados', fmt(canjes.length), dias.length > 1 ? `· ${fmtProm(canjes.length / dias.length)} por día` : `/ ${fmt(metaDe(dias[0]) * imp)}`, `${pct(canjes.length, meta)}% de la meta (${metaTxt(dias)} por impulsadora al día${dias.length > 1 ? '' : ` = ${fmt(metaDe(dias[0]) * imp)} por día`})`, pct(canjes.length, meta)),
+    kpi('Canjes realizados', fmt(canjes.length), dias.length > 1 ? `· ${fmtProm(canjes.length / dias.length)} por día` : `/ ${fmt(metaEquipo(dias[0]))}`, `${pct(canjes.length, meta)}% de la meta (${metaTxt(dias)} por impulsadora al día${dias.length > 1 ? '' : ` = ${fmt(metaEquipo(dias[0]))} por día`})`, pct(canjes.length, meta)),
     kpi('Vales entregados', fmt(vales), '', `1 vale = 1 pavo Redondos de 7 kg · máx. 1 por DNI al día`),
     kpi('Pedidos generados', fmt(P.length), '', `${pct(canjes.length, P.length)}% llegaron a los sacos del canje`),
     kpi('Sacos comprados', fmt(rc + rt), '', `Ricocan ${fmt(rc)} · Ricocat ${fmt(rt)} · ${fmt(kg)} kg`),
@@ -516,7 +528,7 @@ function graficoDia(P, dias, imp) {
   }
   const porDia = Object.fromEntries(fechas.map(f => [f, 0]));
   fuente.filter(p => p._canje).forEach(p => { if (p.fecha in porDia) porDia[p.fecha]++; });
-  const metaDia = f => metaDe(f) * imp;
+  const metaDia = f => metaEquipo(f);
   chart('chDia', {
     type: 'bar',
     data: {
@@ -612,7 +624,7 @@ function tablaEquipo(P, A, dias) {
       return `<tr><td><b>${esc(e.nombre)}</b></td><td>${esc(ent ? ent.mercado : e.mercado)}</td>
         <td>${ent ? `<span class="st ${tarde(ent.hora) ? 'warn' : 'ok'}">${tarde(ent.hora) ? '● Tarde' : '✔'} ${esc(ent.hora)}</span>` : '<span class="st err">✕ Sin marcar</span>'}</td>
         <td>${sal ? esc(sal.hora) : '<span style="color:var(--muted)">—</span>'}</td>
-        <td class="n">${mis.length}</td><td class="n"><b>${cj}</b> / ${metaDe(a)}</td><td class="n">${semaforo(cj, metaDe(a))}</td>${celdasHoras(horasDe(A, e.nombre), esp)}</tr>`;
+        <td class="n">${mis.length}</td><td class="n"><b>${cj}</b> / ${metaDe(a, e.mercado)}</td><td class="n">${semaforo(cj, metaDe(a, e.mercado))}</td>${celdasHoras(horasDe(A, e.nombre), esp)}</tr>`;
     });
     $('#tEquipo').innerHTML = `<thead><tr><th>Impulsadora</th><th>Mercado</th><th>Entrada</th><th>Salida</th><th class="n">Pedidos</th><th class="n">Canjes</th><th class="n">Avance</th>${thHoras}</tr></thead>
       <tbody>${rows.join('') || '<tr><td colspan="10" class="empty">Sin impulsadoras registradas</td></tr>'}</tbody>${pieHoras(eq, A, esp, 7)}`;
@@ -621,7 +633,7 @@ function tablaEquipo(P, A, dias) {
   const rows = eq.map(e => {
     const ents = A.filter(x => x.impulsadora === e.nombre && x.marca === 'Entrada');
     const dTrab = new Set(ents.map(x => x.fecha)).size, tard = ents.filter(x => tarde(x.hora)).length;
-    const mis = P.filter(p => p.impulsadora === e.nombre), cj = mis.filter(p => p._canje).length, meta = sumMeta(dias);
+    const mis = P.filter(p => p.impulsadora === e.nombre), cj = mis.filter(p => p._canje).length, meta = sumMeta(dias, e.mercado);
     return `<tr><td><b>${esc(e.nombre)}</b></td><td>${esc(e.mercado)}</td><td class="n">${dTrab} / ${dias.length}</td>
       <td class="n">${tard || '<span style="color:var(--muted)">0</span>'}</td><td class="n">${mis.length}</td><td class="n"><b>${cj}</b> / ${meta}</td><td class="n">${semaforo(cj, meta)}</td>${celdasHoras(horasDe(A, e.nombre), esp)}</tr>`;
   });
@@ -636,7 +648,7 @@ function tablaMercado(P, A, I, dias) {
     const imp = impulsadorasPorMercado(m);
     const r = {
       ped: p.length, rc: p.reduce((s, x) => s + x._rc, 0), rt: p.reduce((s, x) => s + x._rt, 0),
-      cj: cj.length, v: cj.reduce((s, x) => s + x._vales, 0), meta: metaDe(dias[dias.length - 1]) * imp, mp: sumMeta(dias) * imp,
+      cj: cj.length, v: cj.reduce((s, x) => s + x._vales, 0), meta: metaDe(dias[dias.length - 1], m) * imp, mp: sumMeta(dias, m) * imp,
       jor: new Set(A.filter(a => a.mercado === m && a.marca === 'Entrada').map(a => a.fecha + a.impulsadora)).size, esp: imp * dias.length,
       inc: I.filter(x => x.mercado === m).length,
     };
@@ -678,7 +690,7 @@ function tablaEfectivos() {
   const mercados = mercadosVista();
   const nD = fechas.length, ult = fechas[nD - 1];
   const rows = mercados.map(m => {
-    const imp = impulsadorasPorMercado(m), meta = metaDe(ult) * imp, metaP = sumMeta(fechas) * imp;
+    const imp = impulsadorasPorMercado(m), meta = metaDe(ult, m) * imp, metaP = sumMeta(fechas, m) * imp;
     const cnt = fechas.map(f => D.pedidos.filter(p => p._canje && p.mercado === m && p.fecha === f).length);
     const acum = cnt.reduce((x, y) => x + y, 0);
     return { m, meta, metaP, cnt, acum, alc: pct(cnt[nD - 1], meta), acu: pct(acum, metaP) };
@@ -714,8 +726,8 @@ function tablaProyectado() {
   const mercados = mercadosVista();
   const pct1 = (a, b) => b ? (Math.round(a / b * 1000) / 10).toLocaleString('es-PE') + '%' : '—';
   const rows = mercados.map(m => {
-    const vxd = metaDe(h < fin ? h : fin) * impulsadorasPorMercado(m);
-    const cuota = num(cfg['cuota_vales_' + m]) || sumMeta(diasHabiles(ini, fin)) * impulsadorasPorMercado(m);
+    const vxd = metaDe(h < fin ? h : fin, m) * impulsadorasPorMercado(m);
+    const cuota = num(cfg['cuota_vales_' + m]) || sumMeta(diasHabiles(ini, fin), m) * impulsadorasPorMercado(m);
     const cj = D.pedidos.filter(p => p._canje && p.mercado === m && p.fecha >= desde && p.fecha <= hasta);
     // Días efectivos: días que el mercado trabajó (marcó entrada o hizo canjes). El promedio usa solo
     // días cerrados (antes de hoy) para que no baje en la mañana; si aún no hay ninguno, usa hoy.
@@ -799,7 +811,7 @@ function tablaCuadre() {
   const rows = mercados.map(m => {
     const cuota = num(cfg['cuota_vales_' + m]);
     const usados = D.pedidos.filter(p => p.mercado === m && p.fecha <= finC).reduce((s, p) => s + p._vales, 0);
-    const esperado = Math.min(cuota || Infinity, sumMeta(diasCuadre) * impulsadorasPorMercado(m));
+    const esperado = Math.min(cuota || Infinity, sumMeta(diasCuadre, m) * impulsadorasPorMercado(m));
     t.c += cuota; t.u += usados; t.e += esperado; if (!cuota) t.sinCuota++;
     return fila(m, cuota, usados, esperado);
   });

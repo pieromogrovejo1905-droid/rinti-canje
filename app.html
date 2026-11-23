@@ -191,7 +191,7 @@
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
-    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión <span id="appVer">21</span></p>
+    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión <span id="appVer">22</span></p>
   </section>
 
   <!-- HOME -->
@@ -424,7 +424,8 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 /* ---------- utilidades ---------- */
 const hoy = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
 // Meta del día: la de Config, salvo que un cambio de meta (C.META_CAMBIOS) ya esté vigente.
-const metaHoy = () => { let m = S.meta; (C.META_CAMBIOS || []).forEach(c => { if (hoy() >= c.desde) m = c.meta; }); return m; };
+const metaDe = mer => { let m = S.meta; (C.META_CAMBIOS || []).forEach(c => { if (hoy() >= c.desde && (!c.mercados || c.mercados.includes(mer))) m = c.meta; }); return m; };
+const metaHoy = () => metaDe(mercadoHoy());
 const horaLima = () => new Date().toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit', hour12: false });
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 const store = {
@@ -1003,7 +1004,7 @@ function panelDemo() {
     const canjes = llego ? Math.max(0, Math.min(6, Math.floor((m - 540) / 75) - (i % 3))) : 0;
     return { nombre: 'Impulsadora ' + (i + 1), mercado: mer, celular: i % 2 ? '' : '987654321', entrada: m >= 530 ? ent : '', tarde: tarde && m >= 567,
       salida: '', canjes, pedidos: llego ? canjes + 2 : 0, sacos: llego ? canjes * (REGLAS[mer] || 5) + 3 : 0, ultima: llego && m >= 530 ? (i === 4 ? '10:05' : ahora) : '', foto_entrada: '',
-      incidencias: i === 5 ? [{ hora: '11:20', tipo: 'Quiebre de stock Ricocan / Ricocat', detalle: 'Distribuidor sin Ricocan 22 kg' }] : [], requeridos: REGLAS[mer] };
+      meta: metaDe(mer), incidencias: i === 5 ? [{ hora: '11:20', tipo: 'Quiebre de stock Ricocan / Ricocat', detalle: 'Distribuidor sin Ricocan 22 kg' }] : [], requeridos: REGLAS[mer] };
   });
   return { ok: true, fecha: hoy(), hora: ahora, meta: metaHoy(), hora_ingreso: '09:00', limite: '09:10', filas };
 }
@@ -1020,13 +1021,14 @@ function pintarPanel(r) {
   const filas = r.filas.map(f => {
     const quieto = f.entrada && !f.salida && f.ultima && ahora - aMin(f.ultima) >= 90;
     // ritmo esperado: la meta repartida en 8 horas desde el ingreso
-    const esperado = Math.min(r.meta, Math.max(0, Math.floor((ahora - aMin(r.hora_ingreso)) / 480 * r.meta)));
+    const meta = f.meta || r.meta;
+    const esperado = Math.min(meta, Math.max(0, Math.floor((ahora - aMin(r.hora_ingreso)) / 480 * meta)));
     const atrasada = f.entrada && f.canjes < esperado - 1;
     const nivel = (!f.entrada && pasoIngreso) ? 2 : (f.tarde || quieto || atrasada || f.incidencias.length) ? 1 : 0;
-    return Object.assign({}, f, { quieto, esperado, atrasada, nivel });
+    return Object.assign({}, f, { meta, quieto, esperado, atrasada, nivel });
   }).sort((a, b) => b.nivel - a.nivel || a.canjes - b.canjes);
   const llegaron = filas.filter(f => f.entrada).length, tarde = filas.filter(f => f.tarde).length;
-  const faltan = filas.filter(f => !f.entrada).length, canjes = filas.reduce((s, f) => s + f.canjes, 0), metaT = r.meta * filas.length;
+  const faltan = filas.filter(f => !f.entrada).length, canjes = filas.reduce((s, f) => s + f.canjes, 0), metaT = filas.reduce((s, f) => s + f.meta, 0);
   $('#pnRes').innerHTML = `<div><b>${llegaron}/${filas.length}</b>llegaron</div><div class="${tarde ? 'mid' : ''}"><b>${tarde}</b>tarde</div><div class="${faltan && pasoIngreso ? 'bad' : ''}"><b>${faltan}</b>sin entrada</div>`;
   $('#pnCanjesTxt').innerHTML = `Canjes del equipo: <b style="color:var(--ink)">${canjes} / ${metaT}</b> · ingreso ${esc(r.hora_ingreso)} (tarde desde ${esc(r.limite)})`;
   $('#pnBar').style.width = Math.min(100, metaT ? canjes / metaT * 100 : 0) + '%';
@@ -1043,8 +1045,8 @@ function pintarPanel(r) {
       f.foto_entrada ? `<a href="${esc(f.foto_entrada)}" target="_blank" rel="noopener">🤳 Selfie</a>` : ''].join('');
     return `<div class="card pn ${f.nivel === 2 ? 'alerta' : f.nivel ? 'aviso' : ''}">
       <div class="pn-h"><div><b>${esc(f.mercado)}</b><small>${esc(f.nombre)} · ${f.requeridos || '–'} sacos = 1 vale</small></div>
-        <div style="text-align:right;font-weight:800;font-size:22px;line-height:1">${f.canjes}<small style="display:block;font-size:12px;font-weight:600">/ ${r.meta} canjes</small></div></div>
-      <div class="progress"><i style="width:${Math.min(100, f.canjes / r.meta * 100)}%"></i></div>
+        <div style="text-align:right;font-weight:800;font-size:22px;line-height:1">${f.canjes}<small style="display:block;font-size:12px;font-weight:600">/ ${f.meta} canjes</small></div></div>
+      <div class="progress"><i style="width:${Math.min(100, f.canjes / f.meta * 100)}%"></i></div>
       <div class="stats"><span>Pedidos <b>${f.pedidos}</b></span><span>Sacos <b>${f.sacos}</b></span><span>Último registro <b>${esc(f.ultima || '—')}</b></span></div>
       <div class="pn-pills">${pills.join('')}</div>
       ${f.incidencias.map(i => `<div class="pn-inc">⚠️ ${esc(i.hora)} · ${esc(i.tipo)}${i.detalle ? ': ' + esc(i.detalle) : ''}</div>`).join('')}
@@ -1078,7 +1080,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
    version.json dice la última versión publicada. Si es mayor que la de este teléfono, la app se
    recarga sola en cuanto la promotora está en el inicio (nunca a mitad de un formulario).
    Los registros sin enviar están en IndexedDB y no se pierden al recargar. */
-const APP_VERSION = 21;
+const APP_VERSION = 22;
 var hayVersionNueva = false; // var: show() la consulta antes de esta línea
 async function revisarVersion() {
   if (hayVersionNueva) return recargarSiSePuede();

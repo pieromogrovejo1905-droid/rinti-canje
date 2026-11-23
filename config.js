@@ -21,7 +21,8 @@ window.RINTI = {
   KG: { ricocan: 22, ricocat: 15, ricocan15: 15, ricocat9: 9 },
   META_DIARIA: 6,              // se reemplaza por la hoja Config si existe
   // Cambios de meta en la campaña: desde esa fecha (incluida) rige la nueva meta. Los días anteriores mantienen la suya.
-  META_CAMBIOS: [{ desde: '2026-11-21', meta: 8 }],
+  // Con 'mercados', el cambio aplica solo a esos mercados. Van en orden de fecha.
+  META_CAMBIOS: [{ desde: '2026-11-21', meta: 8 }, { desde: '2026-11-23', meta: 9, mercados: ['Ciudad de Dios', 'Unicachi Sur'] }],
   IMPULSADORAS_PLANIFICADAS: 9,
   // Día 1 de la tabla "Canjes efectivos" de los dashboards (antes fueron pruebas)
   INICIO_EFECTIVO: '2026-11-09',
