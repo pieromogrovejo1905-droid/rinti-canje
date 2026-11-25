@@ -117,6 +117,10 @@
   .codes input{text-transform:uppercase;letter-spacing:.06em;font-weight:700}
   .codes input::placeholder{text-transform:none;letter-spacing:0;font-weight:400}
   .gps{font-size:13px;color:var(--muted);margin-top:10px}
+  .gps-alerta{background:var(--err-soft);border:1.5px solid var(--err);color:var(--ink);border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.4}
+  .gps-alerta b{color:var(--err);display:block;font-size:15px;margin-bottom:4px}
+  .gps-alerta ol{margin:6px 0 8px;padding-left:20px}
+  .gps-alerta button{background:var(--err);color:#fff;border:0;border-radius:10px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer;width:100%}
   .foto-n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:800;margin-right:6px;vertical-align:1px}
   /* Panel del equipo */
   .pn-res{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
@@ -191,7 +195,7 @@
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
-    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión <span id="appVer">23</span></p>
+    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión <span id="appVer">24</span></p>
   </section>
 
   <!-- HOME -->
@@ -558,16 +562,26 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 setInterval(procesarCola, 30000);
 
 /* ---------- GPS ---------- */
-let gps = null, gpsErr = false;
+let gps = null, gpsErr = false; // gpsErr: false | 'permiso' | 'apagado'
 function pedirGPS() {
-  if (!navigator.geolocation) { gpsErr = true; pintarGPS(); return; }
+  if (!navigator.geolocation) { gpsErr = 'apagado'; pintarGPS(); return; }
   navigator.geolocation.getCurrentPosition(p => {
     gps = { lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6), acc: Math.round(p.coords.accuracy) }; gpsErr = false; pintarGPS();
-  }, () => { gpsErr = true; pintarGPS(); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  }, e => { gpsErr = e && e.code === 1 ? 'permiso' : 'apagado'; pintarGPS(); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
 }
+// Aviso fuerte cuando no hay ubicación: explica cómo activarla, pero igual deja enviar.
+const GPS_PASOS = {
+  permiso: '<b>📍 La app no tiene permiso para tu ubicación</b>Así lo activas:<ol><li>Toca el candado 🔒 junto a <i>rinti.holafree.com</i> arriba.</li><li>Entra a <i>Permisos</i> → <i>Ubicación</i> y elige <i>Permitir</i>.</li><li>Vuelve aquí y toca el botón.</li></ol>',
+  apagado: '<b>📍 No encontramos tu ubicación</b>Revisa esto:<ol><li>Enciende la <i>Ubicación</i> del celular (baja la barra de arriba y toca el ícono 📍).</li><li>Si abriste la app desde WhatsApp, ábrela en Chrome.</li><li>Acércate a una puerta o zona abierta y toca el botón.</li></ol>'
+};
 function pintarGPS() {
-  $$('[data-gps]').forEach(el => el.textContent = gps ? `📍 Ubicación registrada (±${gps.acc} m)` : gpsErr ? '📍 Sin ubicación: activa el GPS si puedes (igual se puede enviar)' : '📍 Buscando ubicación…');
+  $$('[data-gps]').forEach(el => {
+    if (gps) { el.className = 'gps'; el.textContent = `📍 Ubicación registrada (±${gps.acc} m)`; }
+    else if (gpsErr) { el.className = 'gps gps-alerta'; el.innerHTML = GPS_PASOS[gpsErr] + '<button type="button" data-gps-retry>Volver a buscar mi ubicación</button>'; }
+    else { el.className = 'gps'; el.textContent = '📍 Buscando ubicación… espera un momento antes de enviar'; }
+  });
 }
+document.addEventListener('click', e => { if (e.target.closest('[data-gps-retry]')) { gpsErr = false; pintarGPS(); pedirGPS(); } });
 
 /* ---------- fotos ---------- */
 const fotos = {};
@@ -723,6 +737,8 @@ $('#goAsis').onclick = () => {
 $('#aEnviar').onclick = async () => {
   const v = $('#vAsis');
   if (!foto('vAsis', 'foto')) return showErr(v, 'Falta la selfie');
+  if (!gps && !confirm(gpsErr ? `Tu ${marca.toLowerCase()} se enviará SIN UBICACIÓN y el supervisor la verá marcada como "Sin GPS".\n\nToca "Cancelar" para activar la ubicación (sigue los pasos en rojo) o "Aceptar" para enviar igual.`
+    : `Todavía estamos buscando tu ubicación.\n\nToca "Cancelar" y espera unos segundos a que diga "Ubicación registrada", o "Aceptar" para enviar sin ubicación.`)) return;
   showErr(v, ''); overlay(true);
   const r = await registrar({ tipo: 'asistencia', marca, mercado: mercadoHoy(), lat: gps && gps.lat, lng: gps && gps.lng, acc: gps && gps.acc, foto: foto('vAsis', 'foto') },
     { titulo: `${marca} · ${mercadoHoy()}`, fecha: hoy() });
@@ -1088,7 +1104,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
    version.json dice la última versión publicada. Si es mayor que la de este teléfono, la app se
    recarga sola en cuanto la promotora está en el inicio (nunca a mitad de un formulario).
    Los registros sin enviar están en IndexedDB y no se pierden al recargar. */
-const APP_VERSION = 23;
+const APP_VERSION = 24;
 var hayVersionNueva = false; // var: show() la consulta antes de esta línea
 async function revisarVersion() {
   if (hayVersionNueva) return recargarSiSePuede();
