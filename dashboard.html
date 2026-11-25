@@ -212,8 +212,11 @@
   </section>
 
   <section class="card">
-    <h2 id="tituloEquipo">Equipo en campo · hoy</h2>
-    <div class="sub" id="subEquipo">Asistencia y avance de cada impulsadora contra la meta del día</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div><h2 id="tituloEquipo">Equipo en campo · hoy</h2>
+      <div class="sub" id="subEquipo">Asistencia y avance de cada impulsadora contra la meta del día</div></div>
+      <button class="tbtn solo-int" id="btnXlsxEquipo" title="Excel con resumen de horas, detalle diario y todas las marcaciones con su selfie (según los filtros)">📥 Excel de marcaciones con selfies</button>
+    </div>
     <div class="tw"><table id="tEquipo"></table></div>
   </section>
 
@@ -973,6 +976,27 @@ $('#btnXlsx').onclick = async () => {
       periodo: a === c ? fCorta(a) : `${fCorta(a)} al ${fCorta(c)}`, mercado: F.mercado, usuario: CI && CI.usuario,
       archivo: `canjes-rinti_${a}_${c}${F.mercado ? '_' + F.mercado.replace(/\s+/g, '-') : ''}.xlsx`,
     });
+  } catch (e) { alert(e.message || 'No se pudo generar el Excel'); }
+  finally { b.disabled = false; b.textContent = t; }
+};
+
+$('#btnXlsxEquipo').onclick = async () => {
+  const b = $('#btnXlsxEquipo'), t = b.textContent; b.disabled = true; b.textContent = 'Preparando…';
+  try {
+    const [a, c] = rango();
+    const r = await window.RintiExcel.descargarEquipo({
+      asistencia: filtrar(D.asistencia), dias: diasOperacion(), hoy: hoy(),
+      periodo: a === c ? fCorta(a) : `${fCorta(a)} al ${fCorta(c)}`, mercado: F.mercado, usuario: CI && CI.usuario,
+      archivo: `equipo-en-campo_${a}_${c}${F.mercado ? '_' + F.mercado.replace(/\s+/g, '-') : ''}.xlsx`,
+      progreso: txt => { b.textContent = txt; },
+      traerFotos: async ids => {
+        if (DEMO) return {};
+        const res = await postAPI({ tipo: 'selfies', usuario: CI.usuario, clave: CI.clave, ids });
+        if (!res.ok) throw new Error(res.error || 'No se pudieron traer las fotos');
+        return res.fotos || {};
+      },
+    });
+    if (r.fotos < r.marcaciones && !DEMO) alert(`Excel listo. ${r.marcaciones - r.fotos} selfie(s) no se pudieron bajar; tienen el enlace "Abrir foto".`);
   } catch (e) { alert(e.message || 'No se pudo generar el Excel'); }
   finally { b.disabled = false; b.textContent = t; }
 };
