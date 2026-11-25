@@ -191,7 +191,7 @@
       <button class="btn" id="btnLogin">Entrar</button>
     </div>
     <p class="muted">Cada mercado tiene su usuario y contraseña. Te los da tu supervisor.</p>
-    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión <span id="appVer">22</span></p>
+    <p class="muted" style="font-size:12px;opacity:.7"><a href="./" style="color:inherit">← Inicio</a> · Versión <span id="appVer">23</span></p>
   </section>
 
   <!-- HOME -->
@@ -227,6 +227,7 @@
       <div class="muted">Mercado</div><div id="aMercado" style="font-weight:700;font-size:18px"></div>
       <label class="f">Selfie con uniforme en el punto</label>
       <label class="foto" data-key="foto"><input type="file" accept="image/*" capture="user"><span class="ph">🤳</span><span class="t">Tomar selfie<small>Que se vea el uniforme y el puesto</small></span></label>
+      <label class="muted" style="display:block;margin-top:8px;font-size:14px;text-decoration:underline;cursor:pointer">¿No abre la cámara? Toca aquí para tomar la foto de otra forma<input type="file" accept="image/*" id="aAltIn" hidden></label>
       <div class="gps" data-gps></div>
       <div class="err-box" data-err hidden></div>
       <button class="btn" id="aEnviar">Enviar</button>
@@ -520,7 +521,7 @@ async function procesarCola() {
     const items = (await DB.all()).filter(i => i.estado === 'pendiente').sort((a, b) => a.creado - b.creado);
     for (const it of items) {
       let res;
-      try { res = await enviar(it.payload); } catch { break; } // sin señal: se intenta luego
+      try { res = await enviar(it.payload); } catch (e) { it.error = e && e.name === 'AbortError' ? 'la señal está muy lenta' : 'sin conexión'; it.intento = Date.now(); await DB.put(it); break; } // sin señal: se intenta luego
       if (res.ok) { await DB.del(it.id); continue; }
       if (res.code === 'val' || res.code === 'auth') {
         it.estado = 'rechazado'; it.error = res.error; await DB.put(it);
@@ -528,13 +529,17 @@ async function procesarCola() {
           const neg = {}; for (const k in it.resumen.delta) neg[k] = -it.resumen.delta[k]; contador(neg);
         }
         toast('Un registro fue rechazado: ' + res.error, 6000);
-      } else break;
+      } else { it.error = res.error || 'error del servidor'; it.intento = Date.now(); await DB.put(it); } // sigue con los demás
     }
   } finally { procesando = false; refrescarCola(); pintarHome(); }
 }
 
+let asisPend = {}; // marcaciones de hoy que siguen en el teléfono sin llegar al servidor
 async function refrescarCola() {
   const items = await DB.all().catch(() => []);
+  asisPend = {};
+  items.forEach(i => { if (i.estado === 'pendiente' && i.payload.tipo === 'asistencia' && i.resumen && i.resumen.fecha === hoy()) asisPend[i.payload.marca] = true; });
+  if (S.user && !$('#vHome').hidden) pintarHome();
   const pend = items.filter(i => i.estado === 'pendiente').length;
   const rech = items.filter(i => i.estado === 'rechazado').length;
   $('#goCola').hidden = !items.length;
@@ -543,12 +548,13 @@ async function refrescarCola() {
     <div class="cola-item"><b>${esc(i.resumen && i.resumen.titulo || i.payload.tipo)}</b>
       <div class="muted">${new Date(i.creado).toLocaleString('es-PE')}</div>
       ${i.estado === 'rechazado' ? `<div class="e">Rechazado: ${esc(i.error)}. Vuelve a registrarlo con los datos correctos.</div>
-        <button class="btn ghost" data-del="${esc(i.id)}">Quitar de la lista</button>` : '<span class="pill warn">Esperando señal</span>'}
+        <button class="btn ghost" data-del="${esc(i.id)}">Quitar de la lista</button>` : `<span class="pill warn">Esperando señal</span>${i.error ? `<div class="muted" style="margin-top:4px;font-size:13px">Último intento${i.intento ? ' ' + new Date(i.intento).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) : ''}: ${esc(i.error)}</div>` : ''}`}
     </div>`).join('') : '<p class="muted">Todo enviado ✔</p>';
 }
 $('#colaLista').addEventListener('click', async e => { const id = e.target.dataset.del; if (id) { await DB.del(id); refrescarCola(); } });
 $('#colaReintentar').onclick = () => { toast('Reintentando…'); procesarCola(); };
 window.addEventListener('online', procesarCola);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.user) procesarCola(); });
 setInterval(procesarCola, 30000);
 
 /* ---------- GPS ---------- */
@@ -575,21 +581,21 @@ async function comprimir(file, max = 1280, q = 0.7) {
     return c.toDataURL('image/jpeg', q);
   } finally { URL.revokeObjectURL(url); }
 }
-$$('.foto').forEach(lab => {
-  const input = $('input', lab);
-  input.addEventListener('change', async () => {
-    const f = input.files && input.files[0]; if (!f) return;
-    const view = lab.closest('.view').id;
-    try {
-      const data = await comprimir(f);
-      fotos[view + ':' + lab.dataset.key] = data;
-      $('.ph', lab).innerHTML = `<img src="${data}" alt="">`;
-      lab.classList.add('done');
-      $('.t', lab).firstChild.textContent = 'Foto lista · tocar para cambiar';
-    } catch { toast('No se pudo leer la foto, intenta otra vez'); }
-    input.value = '';
-  });
-});
+async function ponerFoto(lab, input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  const view = lab.closest('.view').id;
+  try {
+    // La selfie va más liviana: se envía rápido aunque la señal del mercado sea débil.
+    const data = view === 'vAsis' ? await comprimir(f, 900, 0.6) : await comprimir(f);
+    fotos[view + ':' + lab.dataset.key] = data;
+    $('.ph', lab).innerHTML = `<img src="${data}" alt="">`;
+    lab.classList.add('done');
+    $('.t', lab).firstChild.textContent = 'Foto lista · tocar para cambiar';
+  } catch { toast('No se pudo leer la foto, intenta otra vez'); }
+  input.value = '';
+}
+$$('.foto').forEach(lab => { const input = $('input', lab); input.addEventListener('change', () => ponerFoto(lab, input)); });
+$('#aAltIn').addEventListener('change', e => ponerFoto($('#vAsis .foto'), e.target));
 function resetFotos(view) {
   $$('.foto', view).forEach(lab => {
     delete fotos[view.id + ':' + lab.dataset.key];
@@ -700,7 +706,9 @@ function pintarHome() {
   $('#hBar').style.width = Math.min(100, c.canjes / metaHoy() * 100) + '%';
   $('#hPedidos').textContent = c.pedidos; $('#hVales').textContent = c.vales; $('#hSacos').textContent = c.sacos;
   const a = store.get(asisKey(), {});
-  $('#hAsis').innerHTML = (a.Entrada ? `<span class="pill ok">✔ Entrada ${a.Entrada}</span> ` : '<span class="pill warn">Falta marcar entrada</span> ') + (a.Salida ? `<span class="pill ok">✔ Salida ${a.Salida}</span>` : '');
+  const pill = m => asisPend[m] ? `<span class="pill warn">⏳ ${m} ${a[m]} · falta enviar</span> ` : `<span class="pill ok">✔ ${m} ${a[m]}</span> `;
+  $('#hAsis').innerHTML = (a.Entrada ? pill('Entrada') : '<span class="pill warn">Falta marcar entrada</span> ') + (a.Salida ? pill('Salida') : '')
+    + (asisPend.Entrada || asisPend.Salida ? '<div class="muted" style="margin-top:6px;font-size:13px">Tu marcación está guardada en el teléfono y se enviará apenas haya señal. Deja la app abierta o toca “Pendientes por enviar”.</div>' : '');
   $('#goAsisTxt').textContent = !a.Entrada ? 'Marcar entrada' : !a.Salida ? 'Marcar salida' : 'Asistencia completa';
   $('#goAsis').disabled = !!(a.Entrada && a.Salida);
 }
@@ -721,8 +729,8 @@ $('#aEnviar').onclick = async () => {
   overlay(false);
   if (r.estado === 'error') return showErr(v, r.error);
   const a = store.get(asisKey(), {}); a[marca] = horaLima(); store.set(asisKey(), a);
-  toast(r.estado === 'cola' ? `${marca} guardada sin señal. Se enviará sola.` : `${marca} registrada ✔`);
-  show('vHome'); pintarHome();
+  toast(r.estado === 'cola' ? `${marca} guardada sin señal. Se enviará sola.` : `${marca} registrada ✔`, r.estado === 'cola' ? 6000 : undefined);
+  show('vHome'); await refrescarCola(); pintarHome();
 };
 
 /* ---------- pedido / canje ---------- */
@@ -1080,7 +1088,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
    version.json dice la última versión publicada. Si es mayor que la de este teléfono, la app se
    recarga sola en cuanto la promotora está en el inicio (nunca a mitad de un formulario).
    Los registros sin enviar están en IndexedDB y no se pierden al recargar. */
-const APP_VERSION = 22;
+const APP_VERSION = 23;
 var hayVersionNueva = false; // var: show() la consulta antes de esta línea
 async function revisarVersion() {
   if (hayVersionNueva) return recargarSiSePuede();
