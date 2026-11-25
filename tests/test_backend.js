@@ -195,6 +195,8 @@ ok('validar: id inexistente', /No se encontró/.test(post({ ...S, tipo: 'validar
 let k = post({ ...S, tipo: 'kardex' });
 ok('kardex: 9 mercados, lote 1350, sin dotación', k.ok && k.mercados.length === 9 && k.lote === 1350 && k.mercados.every(m => m.dotacion === 0), JSON.stringify(k).slice(0, 120));
 ok('kardex: canjes por mercado desde Pedidos', k.canjes.Fiori && k.canjes.Fiori.total > 0, JSON.stringify(k.canjes));
+ok('selfies: impulsadora no entra', /solo para supervisores/i.test(post({ ...F, tipo: 'selfies', ids: ['abcdefghijk'] }).error));
+ok('selfies: ignora archivos que no son de Asistencia', (r => r.ok && Object.keys(r.fotos).length === 0)(post({ ...S, tipo: 'selfies', ids: ['1NoEstaEnAsistencia00'] })));
 ok('kardex: impulsadora no entra', /solo para supervisores/.test(post({ ...F, tipo: 'kardex' }).error));
 ok('kardex: dotación no puede exceder el lote', /excede el lote/.test(post({ ...S, tipo: 'kardex_guardar', filas: k.mercados.map(m => ({ mercado: m.mercado, dotacion: 200 })) }).error));
 ok('kardex: dotación entera', /entero/.test(post({ ...S, tipo: 'kardex_guardar', filas: [{ mercado: 'Fiori', dotacion: 1.5 }] }).error));

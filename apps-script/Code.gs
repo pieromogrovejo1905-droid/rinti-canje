@@ -231,6 +231,7 @@ function doPost_(e) {
     }
     if (b.tipo === 'validar') return out_(validar_(b, u));
     if (b.tipo === 'completar_canje') return out_(completarCanje_(b, u));
+    if (b.tipo === 'selfies') return out_(selfies_(b, u));
     if (b.tipo === 'kardex') return out_(kardex_(u));
     if (b.tipo === 'kardex_guardar') return out_(kardexGuardar_(b, u));
     if (b.tipo === 'kardex_entrega') return out_(kardexEntrega_(b, u));
@@ -352,6 +353,30 @@ function mercadoDe_(b, u) {
   const m = esJefe_(u) ? limpio_(b.mercado) : limpio_(u.mercado);
   if (!SACOS_POR_MERCADO[m]) throw val_('Mercado no válido: ' + (m || '(vacío)'));
   return m;
+}
+
+/**
+ * Miniaturas de las selfies de asistencia para el Excel de Equipo en campo.
+ * Solo supervisores y coordinador, y solo archivos que están en la hoja Asistencia.
+ */
+const SELFIES_MAX = 40;
+function selfies_(b, u) {
+  if (!esJefe_(u)) return { ok: false, code: 'auth', error: 'Solo para supervisores y coordinador' };
+  const ids = (Array.isArray(b.ids) ? b.ids : []).map(String).filter(function (x) { return /^[\w-]{10,}$/.test(x); }).slice(0, SELFIES_MAX);
+  const validos = {};
+  leer_('Asistencia').forEach(function (r) { const m = String(r.foto || '').match(/\/d\/([\w-]+)/); if (m) validos[m[1]] = true; });
+  const fotos = {};
+  ids.forEach(function (id) {
+    if (!validos[id]) return;
+    try {
+      const f = DriveApp.getFileById(id);
+      let blob = null;
+      try { blob = f.getThumbnail(); } catch (e) { }
+      if (!blob || !blob.getBytes().length) blob = f.getBlob();
+      fotos[id] = 'data:' + (blob.getContentType() || 'image/jpeg') + ';base64,' + Utilities.base64Encode(blob.getBytes());
+    } catch (e) { }
+  });
+  return { ok: true, fotos: fotos };
 }
 
 function asistencia_(b, u) {
