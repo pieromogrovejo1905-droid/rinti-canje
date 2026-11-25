@@ -193,7 +193,20 @@ function doGet(e) {
   }
 }
 
+// Registra en Ejecuciones (Apps Script) cada envío rechazado, para ver el motivo exacto.
 function doPost(e) {
+  const r = doPost_(e);
+  try {
+    const c = r.getContent();
+    if (c.indexOf('{"ok":false') === 0) {
+      let b = {}; try { b = JSON.parse(e.postData.contents); } catch (x) { }
+      console.warn('Rechazado: ' + JSON.stringify({ tipo: b.tipo, usuario: b.usuario, marca: b.marca, respuesta: JSON.parse(c) }));
+    }
+  } catch (x) { }
+  return r;
+}
+
+function doPost_(e) {
   let b;
   try { b = JSON.parse(e.postData.contents); } catch (err) {
     return out_({ ok: false, code: 'val', error: 'Datos inválidos' });
