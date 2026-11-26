@@ -19,8 +19,8 @@ const MERCADOS = [
 
 // Sacos (Ricocan y/o Ricocat, se pueden sumar) que el cliente debe comprar para recibir 1 vale.
 const SACOS_POR_MERCADO = {
-  'Mercado Productores': 15,
-  'Fiori': 15,
+  'Mercado Productores': 12,
+  'Fiori': 12,
   'Unicachi Sur': 8,
   'Parada': 10,
   'Unicachi Norte Mayorista': 10,
